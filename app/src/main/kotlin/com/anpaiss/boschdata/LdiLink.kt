@@ -121,12 +121,20 @@ class LdiLink(
         }
     }
 
-    /** Every 10 s: a silence with the link open is logged once; every 5 min a heartbeat with the counters. */
+    /**
+     * Every 10 s: a silence with the link open is logged once; every 5 min a heartbeat
+     * with the counters. Without the bike, the advertising is restarted every 5 min:
+     * Android gives no callback when a set stops (a connection of any device ends a
+     * connectable advertising, 30/10 the bike could not find the Karoo), so we do not
+     * trust it to still be running.
+     */
     private var lastHeartbeatMs = 0L
+    private var lastAdvertisingMs = 0L
     private val watchdog = object : Runnable {
         override fun run() {
             if (!started) return
             val now = System.currentTimeMillis()
+            if (!connected && now - lastAdvertisingMs >= HEARTBEAT_MS) startAdvertising()
             if (connected) {
                 val silence = now - lastDataMs
                 if (silence > SILENCE_MS && !silenceLogged) {
@@ -269,6 +277,7 @@ class LdiLink(
         val adv = adapter.bluetoothLeAdvertiser ?: run { logger.log(TAG, "Nessun advertiser LE: ruolo accessorio non supportato"); return }
         if (advertiser != null) runCatching { adv.stopAdvertising(advCallback) }
         advertiser = adv
+        lastAdvertisingMs = System.currentTimeMillis()
         val settings = AdvertiseSettings.Builder()
             .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED)
             .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
