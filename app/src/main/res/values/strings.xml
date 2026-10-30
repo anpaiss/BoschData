@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BoschData</string>
+    <string name="extension_name">BoschData</string>
+
+    <string name="field_bike_battery_name">Bike battery</string>
+    <string name="field_bike_battery_desc">Battery % as the Bosch bike reports it over Bluetooth (Live Data Interface). "--" while the bike is off</string>
+    <string name="field_bike_power_name">Rider power (Bosch)</string>
+    <string name="field_bike_power_desc">Watts of the rider from the Bosch torque sensor, over Bluetooth from the bike</string>
+    <string name="field_bike_speed_name">Bike speed (Bosch)</string>
+    <string name="field_bike_speed_desc">Wheel speed in km/h as the Bosch bike reports it, over Bluetooth</string>
+    <string name="field_bike_cadence_name">Cadence (Bosch)</string>
+    <string name="field_bike_cadence_desc">Cadence in rpm as the Bosch bike reports it, over Bluetooth</string>
+    <string name="field_bike_odometer_name">Bike odometer</string>
+    <string name="field_bike_odometer_desc">Total km of the Bosch bike, over Bluetooth</string>
+    <string name="field_bike_light_name">Bike light</string>
+    <string name="field_bike_light_desc">Bike light ON/OFF and ambient brightness, over Bluetooth from the Bosch bike</string>
+</resources>
