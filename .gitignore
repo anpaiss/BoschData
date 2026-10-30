@@ -23,3 +23,6 @@ HANDOVER.md
 # Reddit drafts and images, not tracked
 reddit_post*.md
 /reddit_images
+
+# Local helper that reads the signing values from this PC, never committed
+set_secrets.ps1
