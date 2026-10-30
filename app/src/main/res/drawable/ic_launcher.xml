@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Battery, white on orange, like the icons of the other extensions -->
+<!-- Ring with two horizontal rails and a bolt through it, white on orange (candidate A, 30/10/2026):
+     a nod to the Bosch armature mark without copying it. Same orange as the other extensions. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="48dp"
     android:height="48dp"
@@ -8,16 +9,20 @@
     <path
         android:fillColor="#FF5823"
         android:pathData="M4,4h40v40h-40z" />
-    <!-- body outline -->
+    <!-- ring -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:fillColor="#00000000"
+        android:pathData="M24,8 a16,16 0 1 1 -0.01,0 z" />
+    <!-- rails -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M9.5,18.5 h8.5 M30,18.5 h8.5 M9.5,29.5 h8.5 M30,29.5 h8.5" />
+    <!-- bolt -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M12,15 h21 a2,2 0 0 1 2,2 v14 a2,2 0 0 1 -2,2 h-21 a2,2 0 0 1 -2,-2 v-14 a2,2 0 0 1 2,-2 z M13.5,17.5 v11 h18 v-11 z" />
-    <!-- terminal -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M35.5,20 h2.5 v8 h-2.5 z" />
-    <!-- charge level -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M15,19 h11 v8 h-11 z" />
+        android:pathData="M26.5,12.5 L18,26 h5.5 L21.5,35.5 L30,22 h-5.5 z" />
 </vector>
