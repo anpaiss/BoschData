@@ -98,8 +98,23 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
     // ── Bike link ─────────────────────────────────────────────────────────
 
     private val ldiListener = object : LdiLink.Listener {
-        override fun onLiveData(data: LiveData) { bikeState.value = bikeState.value.merge(data, System.currentTimeMillis()) }
-        override fun onLinkChanged(connected: Boolean) { bikeState.value = bikeState.value.copy(connected = connected) }
+        override fun onLiveData(data: LiveData) {
+            val before = bikeState.value
+            val after = before.merge(data, System.currentTimeMillis())
+            bikeState.value = after
+            // Every change of the displayed % in the log, with where the bike is: the discharge curve is readable from here too
+            if (data.socPct != null && data.socPct != before.socPct)
+                logger.log("BIKE ", "Batteria ${before.socPct?.let { "$it → " } ?: ""}${data.socPct} %" +
+                    (after.odometerM?.let { ", odometro %.1f km".format(it / 1000.0) } ?: "") +
+                    (if (after.chargerConnected == true) ", in carica" else ""))
+            if (data.chargerConnected != null && data.chargerConnected != before.chargerConnected)
+                logger.log("BIKE ", if (data.chargerConnected) "Caricabatterie collegato" else "Caricabatterie scollegato")
+            if (data.lightOn != null && data.lightOn != before.lightOn) logger.log("BIKE ", "Luce ${if (data.lightOn) "accesa" else "spenta"}")
+        }
+        override fun onLinkChanged(connected: Boolean) {
+            bikeState.value = bikeState.value.copy(connected = connected)
+            logger.log("BIKE ", if (connected) "Bici collegata: dati in arrivo" else "Bici scollegata: campi su --, sensore in ricerca")
+        }
     }
 
     fun bluetoothGranted(): Boolean = Build.VERSION.SDK_INT < 31 ||
@@ -144,6 +159,7 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
     override fun connectDevice(uid: String, emitter: Emitter<DeviceEvent>) {
         if (uid != DEVICE_UID) return
         logger.log("SENS ", "Sensore 'Bosch eBike' collegato dal Karoo")
+        var points = 0L
         val job = scope.launch {
             emitter.onNext(OnManufacturerInfo(ManufacturerInfo(manufacturer = "Bosch", modelNumber = "Smart System")))
             var lastConnected: Boolean? = null
@@ -152,8 +168,10 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
                 val s = bikeState.value
                 if (s.connected != lastConnected) {
                     lastConnected = s.connected
+                    logger.log("SENS ", "Sensore: ${if (s.connected) "CONNECTED" else "SEARCHING"} ($points punti finora)")
                     emitter.onNext(OnConnectionStatus(if (s.connected) ConnectionStatus.CONNECTED else ConnectionStatus.SEARCHING))
                 }
+                if (s.connected) points++
                 s.socPct?.let { if (it != lastSoc) { lastSoc = it; emitter.onNext(OnBatteryStatus(BatteryStatus.fromPercentage(it))) } }
                 if (s.connected) {
                     if (prefs.sensorPower) s.riderPowerW?.let {
@@ -166,23 +184,26 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
                 delay(SENSOR_PERIOD_MS)
             }
         }
-        emitter.setCancellable { job.cancel(); logger.log("SENS ", "Sensore 'Bosch eBike' scollegato dal Karoo") }
+        emitter.setCancellable { job.cancel(); logger.log("SENS ", "Sensore 'Bosch eBike' scollegato dal Karoo dopo $points punti") }
     }
 
     // ── The battery in the FIT file ───────────────────────────────────────
 
     override fun startFit(emitter: Emitter<FitEffect>) {
         logger.log("FIT  ", "Scrittura FIT avviata: campo bosch_battery ogni ${FIT_PERIOD_MS / 1000} s con la bici collegata")
+        var records = 0L
         val job = scope.launch {
             while (true) {
                 val s = bikeState.value
                 if (prefs.fitBattery && s.connected) s.socPct?.let {
                     emitter.onNext(WriteToRecordMesg(listOf(FieldValue(0, it.toDouble(), FIT_BATTERY))))
+                    records++
+                    if (records == 1L) logger.log("FIT  ", "Primo valore scritto nel FIT: $it %")
                 }
                 delay(FIT_PERIOD_MS)
             }
         }
-        emitter.setCancellable { job.cancel(); logger.log("FIT  ", "Scrittura FIT fermata") }
+        emitter.setCancellable { job.cancel(); logger.log("FIT  ", "Scrittura FIT fermata dopo $records valori") }
     }
 
     override fun onDestroy() {

@@ -23,7 +23,7 @@ class BoschDataLogger(context: Context) {
         /** Logger dell'estensione, per i receiver (manifest) che vivono nello stesso processo. */
         @Volatile var shared: BoschDataLogger? = null
 
-        private const val MAX_SIZE_BYTES = 1024 * 1024L  // 1 MB
+        private const val MAX_SIZE_BYTES = 2 * 1024 * 1024L  // 2 MB: a ride with the bike logs every % and every event
         private const val LOGCAT_TAG     = "BoschData"
     }
 

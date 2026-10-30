@@ -69,6 +69,10 @@ class LdiLink(
         const val MTU = 247
         private const val CLIENT_DELAY_MS = 500L
         private const val TAG = "LDI  "
+        /** Link open but no message for this long: logged once per silence (the bike sends about one a second). */
+        private const val SILENCE_MS = 30_000L
+        private const val WATCHDOG_MS = 10_000L
+        private const val HEARTBEAT_MS = 5 * 60_000L
     }
 
     private val manager = ctx.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
@@ -80,7 +84,13 @@ class LdiLink(
     /** Devices seen this session without the Live Data Service: not probed again. */
     private val notTheBike = mutableSetOf<String>()
     private var started = false
+    // Debug counters: what the log reports at every event and in the heartbeat
     private var notifications = 0L
+    private var heartbeatNotifications = 0L
+    private var connectedSinceMs = 0L
+    @Volatile private var lastDataMs = 0L
+    private var silenceLogged = false
+    private var advertisingStarts = 0
 
     @Volatile var connected = false
         private set
@@ -94,19 +104,80 @@ class LdiLink(
         }
     }
 
+    /** Bonding, pairing and link-level events of every device: the first pairing and a lost bond show up here. */
+    private val bondReceiver = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) {
+            @Suppress("DEPRECATION")
+            val dev = i.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE) ?: return
+            val who = "${dev.address}${if (dev.address == prefs.bikeAddress) " (bici)" else ""}"
+            when (i.action) {
+                BluetoothDevice.ACTION_BOND_STATE_CHANGED -> logger.log(TAG, "Bond $who: " +
+                    "${bondName(i.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, -1))} → ${bondName(i.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1))}")
+                BluetoothDevice.ACTION_PAIRING_REQUEST -> logger.log(TAG, "Richiesta di pairing da $who, variante " +
+                    "${i.getIntExtra(BluetoothDevice.EXTRA_PAIRING_VARIANT, -1)} (0 PIN, 2 conferma passkey, 3 consenso)")
+                BluetoothDevice.ACTION_ACL_CONNECTED -> if (dev.address == prefs.bikeAddress || prefs.bikeAddress == null) logger.log(TAG, "ACL connesso: $who")
+                BluetoothDevice.ACTION_ACL_DISCONNECTED -> if (dev.address == prefs.bikeAddress || prefs.bikeAddress == null) logger.log(TAG, "ACL disconnesso: $who")
+            }
+        }
+    }
+
+    /** Every 10 s: a silence with the link open is logged once; every 5 min a heartbeat with the counters. */
+    private var lastHeartbeatMs = 0L
+    private val watchdog = object : Runnable {
+        override fun run() {
+            if (!started) return
+            val now = System.currentTimeMillis()
+            if (connected) {
+                val silence = now - lastDataMs
+                if (silence > SILENCE_MS && !silenceLogged) {
+                    silenceLogged = true
+                    logger.log(TAG, "Link aperto ma nessun messaggio da ${silence / 1000} s (bici ferma e spenta? portata?)")
+                }
+                if (now - lastHeartbeatMs >= HEARTBEAT_MS) {
+                    lastHeartbeatMs = now
+                    logger.log(TAG, "Battito: connessa da ${(now - connectedSinceMs) / 60_000} min, $heartbeatNotifications notifiche negli ultimi " +
+                        "${HEARTBEAT_MS / 60_000} min ($notifications totali), ultimo messaggio ${silence / 1000} s fa")
+                    heartbeatNotifications = 0L
+                }
+            }
+            main.postDelayed(this, WATCHDOG_MS)
+        }
+    }
+
     fun start() {
         if (started) return
         started = true
         ctx.registerReceiver(stateReceiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
+        ctx.registerReceiver(bondReceiver, IntentFilter().apply {
+            addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+            addAction(BluetoothDevice.ACTION_PAIRING_REQUEST)
+            addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
+            addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+        })
+        val a = manager.adapter
+        logger.log(TAG, "Avvio accessorio LDI: adattatore '${a?.name}', multiAdv=${a?.isMultipleAdvertisementSupported}, " +
+            "bici nota ${prefs.bikeAddress ?: "nessuna"}, bonded: ${a?.bondedDevices?.joinToString { "${it.address} '${it.name ?: ""}'" } ?: "?"}")
+        main.postDelayed(watchdog, WATCHDOG_MS)
         startRadio()
     }
 
     fun stop() {
         if (!started) return
         started = false
+        main.removeCallbacks(watchdog)
         runCatching { ctx.unregisterReceiver(stateReceiver) }
+        runCatching { ctx.unregisterReceiver(bondReceiver) }
         stopRadio()
-        logger.log(TAG, "Accessorio LDI fermato")
+        logger.log(TAG, "Accessorio LDI fermato ($notifications notifiche in tutto)")
+    }
+
+    private fun bondName(s: Int) = when (s) { 10 -> "nessuno"; 11 -> "in corso"; 12 -> "BONDED"; else -> "$s" }
+    private fun stateName(s: Int) = when (s) { 0 -> "disconnesso"; 1 -> "in connessione"; 2 -> "CONNESSO"; 3 -> "in disconnessione"; else -> "$s" }
+    /** GATT/HCI status of a connection change, the ones worth recognising. */
+    private fun statusName(s: Int) = when (s) {
+        0 -> "ok"; 8 -> "timeout di supervisione (bici spenta o fuori portata)"; 19 -> "chiusa dalla bici"
+        22 -> "chiusa dal Karoo"; 34 -> "LMP timeout"; 62 -> "connessione non stabilita"; 133 -> "errore GATT generico"
+        else -> "status $s"
     }
 
     private fun startRadio() {
@@ -155,14 +226,15 @@ class LdiLink(
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 val known = prefs.bikeAddress
                 when {
-                    known == addr -> logger.log(TAG, "Bici connessa ($addr)")
-                    known == null && addr !in notTheBike -> logger.log(TAG, "Connessione da $addr '${device.name ?: ""}': cerco il Live Data Service")
+                    known == addr -> logger.log(TAG, "Bici connessa al server ($addr, bond ${bondName(device.bondState)}, ${statusName(status)})")
+                    known == null && addr !in notTheBike -> logger.log(TAG, "Connessione da $addr '${device.name ?: ""}' (bond ${bondName(device.bondState)}): cerco il Live Data Service")
                     else -> return                                     // the phone, the watch: not ours
                 }
                 main.postDelayed({ connectAsClient(device) }, CLIENT_DELAY_MS)
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 if (addr == prefs.bikeAddress) {
-                    logger.log(TAG, "Bici disconnessa (status $status) dopo $notifications notifiche")
+                    val mins = if (connectedSinceMs > 0L) (System.currentTimeMillis() - connectedSinceMs) / 60_000 else 0
+                    logger.log(TAG, "Bici disconnessa dal server: ${statusName(status)}, dopo $mins min e $notifications notifiche")
                     closeClient()
                 }
                 main.post { startAdvertising() }   // a connection ends the connectable advertising: let the bike find us again
@@ -218,7 +290,9 @@ class LdiLink(
 
     private val advCallback = object : AdvertiseCallback() {
         override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {
-            logger.log(TAG, "Advertising come accessorio LDI (bici nota: ${prefs.bikeAddress ?: "nessuna, associare da Flow → Accessori"})")
+            advertisingStarts++
+            logger.log(TAG, "Advertising come accessorio LDI, avvio n. $advertisingStarts (modo ${settingsInEffect.mode}, tx ${settingsInEffect.txPowerLevel}; " +
+                "bici nota: ${prefs.bikeAddress ?: "nessuna, associare da Flow → Accessori"})")
         }
         override fun onStartFailure(errorCode: Int) {
             if (errorCode == ADVERTISE_FAILED_ALREADY_STARTED) return
@@ -229,18 +303,30 @@ class LdiLink(
     // ── GATT client on the bike's own connection ──
 
     private fun connectAsClient(device: BluetoothDevice) {
-        if (gatt != null || !started) return
+        if (gatt != null || !started) { if (gatt != null) logger.log(TAG, "Client già aperto: ignoro la nuova connessione di ${device.address}"); return }
+        logger.log(TAG, "Client GATT verso ${device.address}")
         gatt = device.connectGatt(ctx, false, clientCallback, BluetoothDevice.TRANSPORT_LE)
     }
 
     private fun closeClient() {
         runCatching { gatt?.close() }
         gatt = null
-        if (connected) { connected = false; listener.onLinkChanged(false) }
+        if (connected) { connected = false; silenceLogged = false; listener.onLinkChanged(false) }
+    }
+
+    private fun markConnected() {
+        if (connected) return
+        connected = true
+        connectedSinceMs = System.currentTimeMillis()
+        lastHeartbeatMs = connectedSinceMs
+        heartbeatNotifications = 0L
+        silenceLogged = false
+        listener.onLinkChanged(true)
     }
 
     private val clientCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
+            logger.log(TAG, "Client ${g.device.address}: ${stateName(newState)}, ${statusName(status)}")
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 if (!g.requestMtu(MTU)) logger.log(TAG, "requestMtu rifiutata")
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
@@ -249,13 +335,14 @@ class LdiLink(
         }
 
         override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
-            if (mtu < MTU) logger.log(TAG, "MTU $mtu < $MTU: le notifiche arriveranno troncate")
+            logger.log(TAG, "MTU $mtu (status $status)" + if (mtu < MTU) " < $MTU: le notifiche arriveranno troncate" else "")
             if (!g.discoverServices()) logger.log(TAG, "discoverServices rifiutata")
         }
 
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
             val ch = g.getService(LDI_SERVICE)?.getCharacteristic(LDI_CHAR)
             val addr = g.device.address
+            logger.log(TAG, "Servizi di $addr (status $status): " + g.services.joinToString { it.uuid.toString().substring(4, 8) })
             if (ch == null) {
                 logger.log(TAG, "$addr non ha il Live Data Service: non è la bici")
                 notTheBike += addr
@@ -272,8 +359,8 @@ class LdiLink(
         override fun onCharacteristicRead(g: BluetoothGatt, ch: BluetoothGattCharacteristic, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 val d = deliver(ch.value ?: byteArrayOf()) ?: return
-                logger.log(TAG, "Prima lettura: $d")
-                if (!connected) { connected = true; listener.onLinkChanged(true) }
+                logger.log(TAG, "Prima lettura (${ch.value?.size ?: 0} byte): $d")
+                markConnected()
             } else {
                 logger.log(TAG, "Lettura di eb21 fallita, status $status" +
                     if (status == 5 || status == 8 || status == 15) " (cifratura: la bici deve essere associata da Flow → Accessori)" else "")
@@ -287,14 +374,18 @@ class LdiLink(
         }
 
         override fun onDescriptorWrite(g: BluetoothGatt, d: BluetoothGattDescriptor, status: Int) {
-            if (status != BluetoothGatt.GATT_SUCCESS) logger.log(TAG, "Abilitazione notifiche fallita, status $status")
+            if (status == BluetoothGatt.GATT_SUCCESS) logger.log(TAG, "Notifiche abilitate")
+            else logger.log(TAG, "Abilitazione notifiche fallita, status $status")
         }
 
         @Deprecated("Android 12 (API 32) still calls this signature")
         override fun onCharacteristicChanged(g: BluetoothGatt, ch: BluetoothGattCharacteristic) {
             notifications++
-            deliver(ch.value ?: byteArrayOf()) ?: return
-            if (!connected) { connected = true; listener.onLinkChanged(true) }
+            heartbeatNotifications++
+            val d = deliver(ch.value ?: byteArrayOf()) ?: return
+            if (notifications == 1L) logger.log(TAG, "Prima notifica (${ch.value?.size ?: 0} byte): $d")
+            if (silenceLogged) { silenceLogged = false; logger.log(TAG, "Messaggi ripresi dopo il silenzio") }
+            markConnected()
         }
     }
 
@@ -302,6 +393,7 @@ class LdiLink(
         val d = runCatching { LiveData.decode(bytes) }
             .onFailure { logger.log(TAG, "Messaggio LiveData non decodificabile (${bytes.size} byte): ${it.message}") }
             .getOrNull() ?: return null
+        lastDataMs = System.currentTimeMillis()
         listener.onLiveData(d)
         return d
     }
