@@ -42,8 +42,14 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener { requestPermissions(BoschDataExtension.BLUETOOTH_PERMISSIONS, 1) }
         })
 
-        root.addView(label("Pairing, once:\n1. Switch the bike on.\n2. Bosch Flow app → Add component → Accessories → " +
-            "\"Karoo BT Audio\" (that is the Karoo).\nFrom then on the bike connects by itself whenever it is on."))
+        root.addView(Button(this).apply {
+            text = "PAIR BIKE"
+            setOnClickListener { BoschDataExtension.instance?.pairBike(); refresh() }
+        })
+        root.addView(label("Pairing, once:\n1. Switch the bike on.\n2. Tap PAIR BIKE: the Karoo forgets any earlier bike and " +
+            "waits for a new one; the \"Bike:\" line above follows every step.\n3. Bosch Flow app → Add component → " +
+            "Accessories → \"Karoo BT Audio\" (that is the Karoo).\nFrom then on the bike connects by itself whenever it is on. " +
+            "A Karoo still listed in Flow from an earlier pairing must be removed there first."))
 
         root.addView(label("The bike as a Karoo sensor (Karoo: Sensors → add → BoschData → Bosch eBike):").apply { setTypeface(typeface, Typeface.BOLD) })
         root.addView(CheckBox(this).apply {
@@ -75,7 +81,10 @@ class MainActivity : AppCompatActivity() {
         setContentView(ScrollView(this).apply { addView(root) })
     }
 
-    override fun onResume() { super.onResume(); refresh() }
+    // The "Bike:" line follows the pairing live while the screen is open
+    private val ticker = object : Runnable { override fun run() { refresh(); tvBike.postDelayed(this, 1_000L) } }
+    override fun onResume() { super.onResume(); tvBike.post(ticker) }
+    override fun onPause() { super.onPause(); tvBike.removeCallbacks(ticker) }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)

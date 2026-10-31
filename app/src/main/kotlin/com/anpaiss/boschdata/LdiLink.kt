@@ -73,6 +73,8 @@ class LdiLink(
         private const val SILENCE_MS = 30_000L
         private const val WATCHDOG_MS = 10_000L
         private const val HEARTBEAT_MS = 5 * 60_000L
+        /** After PAIR BIKE (and at the first start, no bike known): fast advertising, the probe of 30/10 was found with it. */
+        private const val PAIRING_FAST_MS = 3 * 60_000L
     }
 
     private val manager = ctx.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
@@ -130,11 +132,17 @@ class LdiLink(
      */
     private var lastHeartbeatMs = 0L
     private var lastAdvertisingMs = 0L
+    /** Fast advertising until then (pairing mode), 0 = balanced. */
+    private var pairingUntilMs = 0L
     private val watchdog = object : Runnable {
         override fun run() {
             if (!started) return
             val now = System.currentTimeMillis()
-            if (!connected && now - lastAdvertisingMs >= HEARTBEAT_MS) startAdvertising()
+            if (!connected && pairingUntilMs != 0L && now >= pairingUntilMs) {
+                pairingUntilMs = 0L
+                logger.log(TAG, "Modalità abbinamento finita senza bici: advertising normale")
+                startAdvertising()
+            } else if (!connected && now - lastAdvertisingMs >= HEARTBEAT_MS) startAdvertising()
             if (connected) {
                 val silence = now - lastDataMs
                 if (silence > SILENCE_MS && !silenceLogged) {
@@ -166,6 +174,7 @@ class LdiLink(
         logger.log(TAG, "Avvio accessorio LDI: adattatore '${a?.name}', multiAdv=${a?.isMultipleAdvertisementSupported}, " +
             "bici nota ${prefs.bikeAddress ?: "nessuna"}, bonded: ${a?.bondedDevices?.joinToString { "${it.address} '${it.name ?: ""}'" } ?: "?"}")
         main.postDelayed(watchdog, WATCHDOG_MS)
+        if (prefs.bikeAddress == null) pairingUntilMs = System.currentTimeMillis() + PAIRING_FAST_MS
         startRadio()
     }
 
@@ -177,6 +186,47 @@ class LdiLink(
         runCatching { ctx.unregisterReceiver(bondReceiver) }
         stopRadio()
         logger.log(TAG, "Accessorio LDI fermato ($notifications notifiche in tutto)")
+    }
+
+    /**
+     * The PAIR BIKE button: forget the bike on the Karoo side (saved address and
+     * bond, whose stale keys would make its next connection fail) and advertise
+     * afresh, so the next connection pairs from scratch. The bike keeps its own
+     * keys: a Karoo still listed in Flow must be removed there.
+     */
+    fun forgetBike() {
+        val addr = prefs.bikeAddress
+        prefs.bikeAddress = null
+        notTheBike.clear()
+        closeClient()
+        val adapter = manager.adapter
+        val bike = adapter?.bondedDevices?.firstOrNull { it.address == addr }
+        if (bike != null) {
+            val removed = runCatching { BluetoothDevice::class.java.getMethod("removeBond").invoke(bike) as Boolean }
+            logger.log(TAG, "PAIR: bond con $addr '${bike.name ?: ""}' rimosso: ${removed.getOrNull() ?: "errore ${removed.exceptionOrNull()?.javaClass?.simpleName}"}")
+        }
+        logger.log(TAG, "PAIR: bici dimenticata (era ${addr ?: "nessuna"}), bonded ora: " +
+            (adapter?.bondedDevices?.joinToString { "${it.address} '${it.name ?: ""}'" }?.ifEmpty { "nessuno" } ?: "?"))
+        pairingUntilMs = System.currentTimeMillis() + PAIRING_FAST_MS
+        if (started) startAdvertising()
+    }
+
+    /** One line for the app screen: where the pairing stands. */
+    fun status(): String = when {
+        !started -> "link off"
+        connected -> "paired with ${bikeLabel()}"
+        gatt != null -> "bike connected, pairing…"
+        prefs.bikeAddress != null -> "paired with ${bikeLabel()}: bike off or out of range"
+        advertiser == null -> "Bluetooth off"
+        pairingUntilMs != 0L -> "PAIRING MODE (${((pairingUntilMs - System.currentTimeMillis()) / 1000).coerceAtLeast(0)} s): " +
+            "visible as '${manager.adapter?.name}', waiting for the bike: Flow → Add component → Accessories"
+        else -> "visible as '${manager.adapter?.name}', waiting for the bike: tap PAIR BIKE, then Flow → Add component → Accessories"
+    }
+
+    private fun bikeLabel(): String {
+        val addr = prefs.bikeAddress ?: return "?"
+        val name = runCatching { manager.adapter?.getRemoteDevice(addr)?.name }.getOrNull()
+        return if (name.isNullOrBlank()) addr else "$name ($addr)"
     }
 
     private fun bondName(s: Int) = when (s) { 10 -> "nessuno"; 11 -> "in corso"; 12 -> "BONDED"; else -> "$s" }
@@ -278,8 +328,9 @@ class LdiLink(
         if (advertiser != null) runCatching { adv.stopAdvertising(advCallback) }
         advertiser = adv
         lastAdvertisingMs = System.currentTimeMillis()
+        val fast = pairingUntilMs != 0L && System.currentTimeMillis() < pairingUntilMs
         val settings = AdvertiseSettings.Builder()
-            .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED)
+            .setAdvertiseMode(if (fast) AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY else AdvertiseSettings.ADVERTISE_MODE_BALANCED)
             .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
             .setConnectable(true)
             .setTimeout(0)
@@ -300,7 +351,7 @@ class LdiLink(
     private val advCallback = object : AdvertiseCallback() {
         override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {
             advertisingStarts++
-            logger.log(TAG, "Advertising come accessorio LDI, avvio n. $advertisingStarts (modo ${settingsInEffect.mode}, tx ${settingsInEffect.txPowerLevel}; " +
+            logger.log(TAG, "Advertising come accessorio LDI, avvio n. $advertisingStarts (modo ${settingsInEffect.mode}${if (settingsInEffect.mode == AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY) " = abbinamento" else ""}, tx ${settingsInEffect.txPowerLevel}; " +
                 "bici nota: ${prefs.bikeAddress ?: "nessuna, associare da Flow → Accessori"})")
         }
         override fun onStartFailure(errorCode: Int) {

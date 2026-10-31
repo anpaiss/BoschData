@@ -130,16 +130,22 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
         if (on) startBikeLink() else { ldi?.stop(); bikeState.value = bikeState.value.copy(connected = false) }
     }
 
+    /** The PAIR BIKE button: start the pairing from scratch. */
+    fun pairBike() {
+        bikeState.value = BikeState()
+        ldi?.forgetBike()
+    }
+
     /** For the app screen. */
     fun bikeSummary(): String {
         val s = bikeState.value
+        val link = ldi
         return when {
             !prefs.enabled -> "off"
             !bluetoothGranted() -> "Bluetooth permission MISSING: grant it below"
-            s.connected -> "connected" + (s.socPct?.let { ", battery $it %" } ?: "") + (s.odometerM?.let { ", odometer %.1f km".format(it / 1000.0) } ?: "")
-            s.updatedMs > 0L -> "not connected, last data ${(System.currentTimeMillis() - s.updatedMs) / 60_000} min ago" + (s.socPct?.let { " (battery $it %)" } ?: "")
-            prefs.bikeAddress != null -> "not connected (bike ${prefs.bikeAddress}): switch the bike on"
-            else -> "not paired yet: Flow app → Add component → Accessories → Karoo"
+            link == null -> "extension not running"
+            s.connected -> link.status() + (s.socPct?.let { ", battery $it %" } ?: "") + (s.odometerM?.let { ", odometer %.1f km".format(it / 1000.0) } ?: "")
+            else -> link.status() + (if (s.updatedMs > 0L) ", last data ${(System.currentTimeMillis() - s.updatedMs) / 60_000} min ago" else "")
         }
     }
 
