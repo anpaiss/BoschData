@@ -142,7 +142,8 @@ class LdiLink(
                 pairingUntilMs = 0L
                 logger.log(TAG, "Modalità abbinamento finita senza bici: advertising normale")
                 startAdvertising()
-            } else if (!connected && now - lastAdvertisingMs >= HEARTBEAT_MS) startAdvertising()
+            }
+            // No periodic restart: every restart gives the Karoo a new private address, and the bike looks for the one it paired with (31/10)
             if (connected) {
                 val silence = now - lastDataMs
                 if (silence > SILENCE_MS && !silenceLogged) {
@@ -295,7 +296,8 @@ class LdiLink(
                     logger.log(TAG, "Bici disconnessa dal server: ${statusName(status)}, dopo $mins min e $notifications notifiche")
                     closeClient()
                 }
-                main.post { startAdvertising() }   // a connection ends the connectable advertising: let the bike find us again
+                // No restart here either: the stack keeps the advertising instance enabled after a disconnection (HCI log of 31/10),
+                // and a restart would only give the Karoo yet another private address
             }
         }
 
