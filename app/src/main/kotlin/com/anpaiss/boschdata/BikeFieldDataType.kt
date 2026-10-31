@@ -46,6 +46,7 @@ data class BikeState(
  * Single-cell fields fed straight by the bike over the Live Data Interface:
  * battery, rider power (the Bosch torque sensor), wheel speed, cadence,
  * odometer, light. "--" while the bike is off, with the last value below it.
+ * Green background while the bike feeds the field, red when it does not.
  * The stream carries the number and goes NotAvailable with the bike off: other
  * extensions (boschRange) read the battery from it.
  */
@@ -58,7 +59,7 @@ class BikeFieldDataType(
 ) : DataTypeImpl(extension, typeId) {
 
     enum class Kind { BATTERY, POWER, SPEED, CADENCE, ODOMETER, LIGHT }
-    private data class Face(val caption: String, val value: String, val sub: String)
+    private data class Face(val caption: String, val value: String, val sub: String, val ok: Boolean)
 
     companion object {
         private const val REDRAW_THROTTLE_MS = 1_000L
@@ -115,7 +116,11 @@ class BikeFieldDataType(
                     views.setTextViewTextSize(R.id.tv_sub, TypedValue.COMPLEX_UNIT_SP, subSp)
                     views.setViewVisibility(R.id.tv_caption, if (small) View.GONE else View.VISIBLE)
                     views.setViewVisibility(R.id.tv_sub, if (small || face.sub.isEmpty()) View.GONE else View.VISIBLE)
-                    views.setTextColor(R.id.tv_value, context.getColor(R.color.page_text))
+                    // Green while the bike feeds the field, red otherwise: a link loss is visible at a glance while riding
+                    views.setInt(R.id.field_root, "setBackgroundColor", context.getColor(if (face.ok) R.color.field_ok else R.color.field_bad))
+                    views.setTextColor(R.id.tv_value, context.getColor(R.color.field_text))
+                    views.setTextColor(R.id.tv_caption, context.getColor(R.color.field_text_muted))
+                    views.setTextColor(R.id.tv_sub, context.getColor(R.color.field_text_muted))
                     emitter.updateView(views)
                 }
         }
@@ -137,7 +142,7 @@ class BikeFieldDataType(
             Kind.CADENCE -> "CADENCE"; Kind.ODOMETER -> "ODOMETER"; Kind.LIGHT -> "BIKE LIGHT"
         }
         val v = value(s)
-        if (!s.connected) return Face(caption, "--", if (v != null && kind != Kind.POWER && kind != Kind.SPEED && kind != Kind.CADENCE) "last $v" else "bike off")
+        if (!s.connected) return Face(caption, "--", if (v != null && kind != Kind.POWER && kind != Kind.SPEED && kind != Kind.CADENCE) "last $v" else "bike off", ok = false)
         val sub = when (kind) {
             Kind.BATTERY  -> if (s.chargerConnected == true) "charging" else ""
             Kind.SPEED    -> "km/h"
@@ -146,6 +151,6 @@ class BikeFieldDataType(
             Kind.LIGHT    -> s.lux?.let { "%.0f lx".format(it) } ?: ""
             Kind.POWER    -> ""
         }
-        return Face(caption, v ?: "--", sub)
+        return Face(caption, v ?: "--", sub, ok = true)
     }
 }
