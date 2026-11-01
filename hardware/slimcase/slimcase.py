@@ -12,13 +12,13 @@ FOAM = 1.0                                 # double-sided foam tape, two layers 
 TOP_PARTS = 6.5                            # JST PH header + plug is the tallest part on the board
 GAP_USB = 2.5                              # room between the USB-end board edge and the wall for the LiPo wires
 CLEAR = 0.6                                # board length clearance
-WALL, FLOOR, LID = 2.4, 1.5, 1.5
+WALL, FLOOR, LID = 3.0, 1.5, 1.5
 IN_L = PCB_L + CLEAR + GAP_USB             # 53.9
 IN_W = 25.0                                # LiPo 24 + 1
 IN_H = FOAM + BAT_T + 0.5 + FOAM + PCB_T + TOP_PARTS + 0.4   # 17.0
-REBATE_D, REBATE_H = 1.0, 3.0              # the lid skirt (1.0 thick) sits in this rebate, flush with the wall
+REBATE_D, REBATE_H = 1.2, 3.0              # the lid skirt (1.2 thick) sits in this rebate, flush with the wall
 FIT = 0.15                                 # clearance between skirt and rebate (MJF PA12)
-RIDGE, RIDGE_H = 0.35, 0.8                 # snap ridge on the skirt / groove in the rebate
+RIDGE, RIDGE_H = 0.5, 1.2                  # snap ridge on the skirt / groove in the rebate (wall left at the groove: 1.15 mm)
 WIN_W, WIN_Z0 = 20.0, 8.5                  # USB-end opening: width, bottom height above the floor (cable overmold)
 
 OUT_L, OUT_W = IN_L + 2 * WALL, IN_W + 2 * WALL
