@@ -1,6 +1,10 @@
 """Minimal snap-fit case for an Adafruit Feather nRF52840 Express stacked over a 500 mAh LiPo (40x24x6).
 Geometry is a union/difference of axis-aligned boxes, turned into a watertight STL on a non-uniform grid
 (every cell face between solid and empty is emitted, so the mesh has no T-junctions).
+
+Closure: the lid has an inner skirt (1.5 mm) along the two long sides and the antenna end that drops into the
+pocket; a 0.4 mm ridge on the skirt snaps into a groove cut in the pocket wall. Nothing is thinner than the
+skirt itself: walls 3.0 (2.6 at the groove), floor and lid plate 1.5, lip above the groove 1.5 tall x 3 thick.
 usage: python slimcase.py outdir   -> outdir/slim-case-bottom.stl, outdir/slim-case-lid.stl"""
 import struct, sys, os
 import numpy as np
@@ -12,13 +16,13 @@ FOAM = 1.0                                 # double-sided foam tape, two layers 
 TOP_PARTS = 6.5                            # JST PH header + plug is the tallest part on the board
 GAP_USB = 2.5                              # room between the USB-end board edge and the wall for the LiPo wires
 CLEAR = 0.6                                # board length clearance
-WALL, FLOOR, LID = 3.4, 1.5, 1.5
+WALL, FLOOR, LID = 3.0, 1.5, 1.5
+SKIRT, SKIRT_H, FIT = 1.5, 3.0, 0.15       # lid skirt inside the pocket, along the long sides and the antenna end
+RIDGE, RIDGE_H = 0.4, 1.5                  # snap ridge at the skirt tip (outer face) / groove in the pocket wall
+LIP = 1.5                                  # material above the groove (wall top to groove top)
 IN_L = PCB_L + CLEAR + GAP_USB             # 53.9
-IN_W = 25.0                                # LiPo 24 + 1
+IN_W = PCB_W + 2 * (SKIRT + FIT) + 0.8     # 27.0: board centred with 0.4 mm beside each skirt
 IN_H = FOAM + BAT_T + 0.5 + FOAM + PCB_T + TOP_PARTS + 0.4   # 17.0
-REBATE_D, REBATE_H = 1.2, 3.0              # the lid skirt (1.2 thick) sits in this rebate, flush with the wall
-FIT = 0.15                                 # clearance between skirt and rebate (MJF PA12)
-RIDGE, RIDGE_H = 0.5, 1.2                  # snap ridge on the skirt / groove in the rebate (wall left at the groove: 1.55 mm, Weerg flags 1.15)
 WIN_W, WIN_Z0 = 20.0, 8.5                  # USB-end opening: width, bottom height above the floor (cable overmold)
 
 OUT_L, OUT_W = IN_L + 2 * WALL, IN_W + 2 * WALL
@@ -63,25 +67,24 @@ def volume(tris): return abs(sum(np.dot(a, np.cross(b, c)) for a, b, c in tris) 
 def bottom():
     ops = [(+1, box(0, OUT_L, 0, OUT_W, 0, BOX_H))]
     ops.append((-1, box(WALL, WALL + IN_L, WALL, WALL + IN_W, FLOOR, BOX_H + 1)))                       # pocket
-    r = REBATE_D + FIT                                                                                  # rebate for the lid skirt, all around
-    ops += [(-1, box(-1, r, -1, OUT_W + 1, BOX_H - REBATE_H, BOX_H + 1)), (-1, box(OUT_L - r, OUT_L + 1, -1, OUT_W + 1, BOX_H - REBATE_H, BOX_H + 1)),
-            (-1, box(-1, OUT_L + 1, -1, r, BOX_H - REBATE_H, BOX_H + 1)), (-1, box(-1, OUT_L + 1, OUT_W - r, OUT_W + 1, BOX_H - REBATE_H, BOX_H + 1))]
-    gz0 = BOX_H - REBATE_H + 1.0                                                                       # snap groove on the long sides (y = const)
-    ops += [(-1, box(-1, OUT_L + 1, -1, r + RIDGE, gz0, gz0 + RIDGE_H)), (-1, box(-1, OUT_L + 1, OUT_W - r - RIDGE, OUT_W + 1, gz0, gz0 + RIDGE_H))]
+    gz1 = BOX_H - LIP; gz0 = gz1 - RIDGE_H                                                             # groove in the pocket wall: long sides + antenna end (x = 0 side)
+    ops += [(-1, box(WALL - RIDGE, WALL + IN_L, WALL - RIDGE, WALL + RIDGE, gz0, gz1)),
+            (-1, box(WALL - RIDGE, WALL + IN_L, WALL + IN_W - RIDGE, WALL + IN_W + RIDGE, gz0, gz1)),
+            (-1, box(WALL - RIDGE, WALL + RIDGE, WALL - RIDGE, WALL + IN_W + RIDGE, gz0, gz1))]
     wy0 = OUT_W / 2 - WIN_W / 2                                                                        # USB-end opening (x = OUT_L end)
     ops.append((-1, box(WALL + IN_L - 0.01, OUT_L + 1, wy0, wy0 + WIN_W, FLOOR + WIN_Z0, BOX_H + 1)))
     return mesh(ops)
 
 def lid():
-    """Built upside down for printing: plate on z=0, skirt going up."""
+    """Built upside down for printing: plate on z=0, skirt going up. Same footprint as the bottom."""
     ops = [(+1, box(0, OUT_L, 0, OUT_W, 0, LID))]
-    s = REBATE_D
-    ops += [(+1, box(0, s, 0, OUT_W, LID, LID + REBATE_H)), (+1, box(OUT_L - s, OUT_L, 0, OUT_W, LID, LID + REBATE_H)),
-            (+1, box(0, OUT_L, 0, s, LID, LID + REBATE_H)), (+1, box(0, OUT_L, OUT_W - s, OUT_W, LID, LID + REBATE_H))]
-    rz0 = LID + REBATE_H - 1.0 - RIDGE_H                                                              # ridge matching the groove (skirt tip = z LID+REBATE_H)
-    ops += [(+1, box(s, OUT_L - s, s, s + RIDGE, rz0, rz0 + RIDGE_H)), (+1, box(s, OUT_L - s, OUT_W - s - RIDGE, OUT_W - s, rz0, rz0 + RIDGE_H))]
-    wy0 = OUT_W / 2 - WIN_W / 2                                                                        # no skirt over the USB opening
-    ops.append((-1, box(OUT_L - s - RIDGE - 0.01, OUT_L + 1, wy0, wy0 + WIN_W, LID, LID + REBATE_H + 1)))
+    x0, x1 = WALL + FIT, WALL + IN_L - FIT                                                             # skirt inside the pocket
+    y0, y1 = WALL + FIT, WALL + IN_W - FIT
+    ops += [(+1, box(x0, x1, y0, y0 + SKIRT, LID, LID + SKIRT_H)), (+1, box(x0, x1, y1 - SKIRT, y1, LID, LID + SKIRT_H)),
+            (+1, box(x0, x0 + SKIRT, y0, y1, LID, LID + SKIRT_H))]
+    rz0 = LID + LIP; rz1 = rz0 + RIDGE_H                                                               # ridge on the skirt's outer face, matching the groove
+    ops += [(+1, box(x0, x1, y0 - RIDGE, y0, rz0, rz1)), (+1, box(x0, x1, y1, y1 + RIDGE, rz0, rz1)),
+            (+1, box(x0 - RIDGE, x0, y0 - RIDGE, y1 + RIDGE, rz0, rz1))]
     return mesh(ops)
 
 if __name__ == '__main__':
