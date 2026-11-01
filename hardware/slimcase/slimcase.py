@@ -66,8 +66,8 @@ def bottom():
     r = REBATE_D + FIT                                                                                  # rebate for the lid skirt, all around
     ops += [(-1, box(-1, r, -1, OUT_W + 1, BOX_H - REBATE_H, BOX_H + 1)), (-1, box(OUT_L - r, OUT_L + 1, -1, OUT_W + 1, BOX_H - REBATE_H, BOX_H + 1)),
             (-1, box(-1, OUT_L + 1, -1, r, BOX_H - REBATE_H, BOX_H + 1)), (-1, box(-1, OUT_L + 1, OUT_W - r, OUT_W + 1, BOX_H - REBATE_H, BOX_H + 1))]
-    gz0 = BOX_H - REBATE_H + 1.0                                                                       # snap groove on the long sides
-    ops += [(-1, box(-1, r + RIDGE, -1, OUT_W + 1, gz0, gz0 + RIDGE_H)), (-1, box(OUT_L - r - RIDGE, OUT_L + 1, -1, OUT_W + 1, gz0, gz0 + RIDGE_H))]
+    gz0 = BOX_H - REBATE_H + 1.0                                                                       # snap groove on the long sides (y = const)
+    ops += [(-1, box(-1, OUT_L + 1, -1, r + RIDGE, gz0, gz0 + RIDGE_H)), (-1, box(-1, OUT_L + 1, OUT_W - r - RIDGE, OUT_W + 1, gz0, gz0 + RIDGE_H))]
     wy0 = OUT_W / 2 - WIN_W / 2                                                                        # USB-end opening (x = OUT_L end)
     ops.append((-1, box(WALL + IN_L - 0.01, OUT_L + 1, wy0, wy0 + WIN_W, FLOOR + WIN_Z0, BOX_H + 1)))
     return mesh(ops)
@@ -79,9 +79,9 @@ def lid():
     ops += [(+1, box(0, s, 0, OUT_W, LID, LID + REBATE_H)), (+1, box(OUT_L - s, OUT_L, 0, OUT_W, LID, LID + REBATE_H)),
             (+1, box(0, OUT_L, 0, s, LID, LID + REBATE_H)), (+1, box(0, OUT_L, OUT_W - s, OUT_W, LID, LID + REBATE_H))]
     rz0 = LID + REBATE_H - 1.0 - RIDGE_H                                                              # ridge matching the groove (skirt tip = z LID+REBATE_H)
-    ops += [(+1, box(s, s + RIDGE, s, OUT_W - s, rz0, rz0 + RIDGE_H)), (+1, box(OUT_L - s - RIDGE, OUT_L - s, s, OUT_W - s, rz0, rz0 + RIDGE_H))]
+    ops += [(+1, box(s, OUT_L - s, s, s + RIDGE, rz0, rz0 + RIDGE_H)), (+1, box(s, OUT_L - s, OUT_W - s - RIDGE, OUT_W - s, rz0, rz0 + RIDGE_H))]
     wy0 = OUT_W / 2 - WIN_W / 2                                                                        # no skirt over the USB opening
-    ops.append((-1, box(OUT_L - s - 0.01, OUT_L + 1, wy0, wy0 + WIN_W, LID, LID + REBATE_H + 1)))
+    ops.append((-1, box(OUT_L - s - RIDGE - 0.01, OUT_L + 1, wy0, wy0 + WIN_W, LID, LID + REBATE_H + 1)))
     return mesh(ops)
 
 if __name__ == '__main__':
