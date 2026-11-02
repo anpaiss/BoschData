@@ -32,8 +32,11 @@ import kotlinx.coroutines.launch
 
 /**
  * BoschData: the Bosch Smart System e-bike on the Karoo, over the Bosch Live
- * Data Interface (LDI V1.0, May 2026). The Karoo is the LDI accessory
- * ([LdiLink]); what the bike sends ([LiveData]) becomes:
+ * Data Interface (LDI V1.0, May 2026). Two ways to the bike, chosen in the
+ * app: through the BEStie board, the accessory the bike stays bonded with,
+ * read by the Karoo as a central ([BestieLink], the default); or directly,
+ * the Karoo itself as the LDI accessory ([LdiLink], which Android's address
+ * rotation breaks at every restart). What the bike sends ([LiveData]) becomes:
  *
  *  - six data fields ([BikeFieldDataType]): battery, rider power, speed,
  *    cadence, odometer, light. Their streams carry the number: boschRange
@@ -49,6 +52,7 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
     private lateinit var logger: BoschDataLogger
     private lateinit var prefs: Prefs
     private var ldi: LdiLink? = null
+    private var bestie: BestieLink? = null
     private var karooSystem: KarooSystemService? = null
     private val consumerIds = mutableListOf<String>()
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -57,7 +61,7 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
 
     companion object {
         @Volatile var instance: BoschDataExtension? = null
-        val BLUETOOTH_PERMISSIONS = arrayOf("android.permission.BLUETOOTH_CONNECT", "android.permission.BLUETOOTH_ADVERTISE")
+        val BLUETOOTH_PERMISSIONS = arrayOf("android.permission.BLUETOOTH_CONNECT", "android.permission.BLUETOOTH_ADVERTISE", "android.permission.BLUETOOTH_SCAN")
         const val DEVICE_UID = "bike"
         private const val SENSOR_PERIOD_MS = 1_000L     // "typical sensors emit at 1 Hz, even if the value is unchanged"
         private const val FIT_PERIOD_MS    = 5_000L
@@ -82,9 +86,10 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
         instance = this
         runCatching {
             val pi = packageManager.getPackageInfo(packageName, 0)
-            logger.log("SYS  ", "Versione ${pi.versionName} (${pi.longVersionCode}); sensore: potenza ${prefs.sensorPower}, cadenza ${prefs.sensorCadence}, velocità ${prefs.sensorSpeed}; FIT batteria ${prefs.fitBattery}")
+            logger.log("SYS  ", "Versione ${pi.versionName} (${pi.longVersionCode}); fonte ${if (prefs.viaBoard) "scheda BEStie" else "bici diretta"}; sensore: potenza ${prefs.sensorPower}, cadenza ${prefs.sensorCadence}, velocità ${prefs.sensorSpeed}; FIT batteria ${prefs.fitBattery}")
         }
         ldi = LdiLink(applicationContext, logger, prefs, ldiListener)
+        bestie = BestieLink(applicationContext, logger, prefs, ldiListener)
         if (prefs.enabled) startBikeLink()
         karooSystem = KarooSystemService(applicationContext).also { ks ->
             ks.connect { _ ->
@@ -122,30 +127,50 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
 
     private fun startBikeLink() {
         if (!bluetoothGranted()) { logger.log("LDI  ", "Permessi Bluetooth assenti: collegamento alla bici non avviato (concederli nell'app)"); return }
-        runCatching { ldi?.start() }.onFailure { logger.logError("LDI  ", "Avvio del collegamento alla bici fallito", it) }
+        if (prefs.viaBoard) runCatching { bestie?.start() }.onFailure { logger.logError("BEST ", "Avvio del client verso la scheda fallito", it) }
+        else runCatching { ldi?.start() }.onFailure { logger.logError("LDI  ", "Avvio del collegamento alla bici fallito", it) }
+    }
+
+    private fun stopBikeLink() {
+        bestie?.stop(); ldi?.stop()
+        bikeState.value = bikeState.value.copy(connected = false)
     }
 
     /** The ON/OFF switch of the app and the Bluetooth permissions: the link follows them. */
     fun onEnabledChanged(on: Boolean) {
-        if (on) startBikeLink() else { ldi?.stop(); bikeState.value = bikeState.value.copy(connected = false) }
+        if (on) startBikeLink() else stopBikeLink()
     }
 
-    /** The PAIR BIKE button: start the pairing from scratch. */
+    /** The source switch in the app: stop one link, start the other. */
+    fun onSourceChanged(viaBoard: Boolean) {
+        prefs.viaBoard = viaBoard
+        logger.log("SYS  ", "Fonte dei dati: ${if (viaBoard) "scheda BEStie" else "bici diretta"}")
+        stopBikeLink()
+        if (prefs.enabled) startBikeLink()
+    }
+
+    /** The PAIR BIKE button (direct link): start the pairing from scratch. */
     fun pairBike() {
         bikeState.value = BikeState()
         ldi?.forgetBike()
     }
 
+    /** The FORGET BOARD button (board link): look for any BEStie again. */
+    fun forgetBoard() {
+        bikeState.value = BikeState()
+        bestie?.forgetBoard()
+    }
+
     /** For the app screen. */
     fun bikeSummary(): String {
         val s = bikeState.value
-        val link = ldi
+        val link = if (prefs.viaBoard) bestie?.status() else ldi?.status()
         return when {
             !prefs.enabled -> "off"
             !bluetoothGranted() -> "Bluetooth permission MISSING: grant it below"
             link == null -> "extension not running"
-            s.connected -> link.status() + (s.socPct?.let { ", battery $it %" } ?: "") + (s.odometerM?.let { ", odometer %.1f km".format(it / 1000.0) } ?: "")
-            else -> link.status() + (if (s.updatedMs > 0L) ", last data ${(System.currentTimeMillis() - s.updatedMs) / 60_000} min ago" else "")
+            s.connected -> link + (s.socPct?.let { ", battery $it %" } ?: "") + (s.odometerM?.let { ", odometer %.1f km".format(it / 1000.0) } ?: "")
+            else -> link + (if (s.updatedMs > 0L) ", last data ${(System.currentTimeMillis() - s.updatedMs) / 60_000} min ago" else "")
         }
     }
 
@@ -215,6 +240,7 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
     override fun onDestroy() {
         consumerIds.forEach { id -> karooSystem?.removeConsumer(id) }
         karooSystem?.disconnect()
+        bestie?.stop()
         ldi?.stop()
         scope.cancel()
         instance = null

@@ -31,6 +31,12 @@ class MainActivity : AppCompatActivity() {
             "and the battery goes in the FIT file of every ride."))
 
         root.addView(CheckBox(this).apply {
+            text = "Through the BEStie board (recommended): the board stays paired with the bike, the Karoo reads the board"
+            isChecked = prefs.viaBoard
+            setOnCheckedChangeListener { _, on -> BoschDataExtension.instance?.onSourceChanged(on) ?: run { prefs.viaBoard = on }; refresh() }
+        })
+
+        root.addView(CheckBox(this).apply {
             text = "BoschData ON (off = no Bluetooth, no data)"
             isChecked = prefs.enabled
             setOnCheckedChangeListener { _, on -> prefs.enabled = on; BoschDataExtension.instance?.onEnabledChanged(on); refresh() }
@@ -43,13 +49,21 @@ class MainActivity : AppCompatActivity() {
         })
 
         root.addView(Button(this).apply {
-            text = "PAIR BIKE"
+            text = "FORGET BOARD"
+            setOnClickListener { BoschDataExtension.instance?.forgetBoard(); refresh() }
+        })
+        root.addView(label("With the board, once:\n1. Flash the BEStie firmware (Karoo build) and power the board.\n" +
+            "2. Bosch Flow app → Add component → Accessories → \"BEStie\": the bike pairs with the board.\n" +
+            "3. The Karoo finds the board by itself (\"Bike:\" line above); FORGET BOARD to look for a different one.\n" +
+            "The board's own log and status land in the BoschData log (tags BRD and STAT)."))
+
+        root.addView(Button(this).apply {
+            text = "PAIR BIKE (direct link only)"
             setOnClickListener { BoschDataExtension.instance?.pairBike(); refresh() }
         })
-        root.addView(label("Pairing, once:\n1. Switch the bike on.\n2. Tap PAIR BIKE: the Karoo forgets any earlier bike and " +
+        root.addView(label("Direct link (box above unticked), pairing once:\n1. Switch the bike on.\n2. Tap PAIR BIKE: the Karoo forgets any earlier bike and " +
             "waits for a new one; the \"Bike:\" line above follows every step.\n3. Bosch Flow app → Add component → " +
-            "Accessories → \"Karoo BT Audio\" (that is the Karoo).\nFrom then on the bike connects by itself whenever it is on. " +
-            "A Karoo still listed in Flow from an earlier pairing must be removed there first."))
+            "Accessories → \"Karoo BT Audio\" (that is the Karoo).\nKnown limit: the bike loses the Karoo at every Bluetooth restart (Android changes the address)."))
 
         root.addView(label("The bike as a Karoo sensor (Karoo: Sensors → add → BoschData → Bosch eBike):").apply { setTypeface(typeface, Typeface.BOLD) })
         root.addView(CheckBox(this).apply {

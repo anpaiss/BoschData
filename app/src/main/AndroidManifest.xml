@@ -2,8 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- The Karoo advertises as a Bosch Live Data Interface accessory and reads the bike (LdiLink).
-         No scanning: the bike is the one that scans and connects. -->
+    <!-- Via the BEStie board (BestieLink): the Karoo scans for the board by name and connects to it.
+         Direct (LdiLink): the Karoo advertises as a Bosch Live Data Interface accessory, the bike connects. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 

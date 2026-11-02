@@ -13,6 +13,16 @@ class Prefs(ctx: Context) {
         get() = sp.getBoolean(KEY_ENABLED, true)
         set(v) = sp.edit().putBoolean(KEY_ENABLED, v).apply()
 
+    /** Where the bike data comes from: the BEStie board (the Karoo is a central) or the bike directly (the Karoo is the LDI accessory). */
+    var viaBoard: Boolean
+        get() = sp.getBoolean(KEY_VIA_BOARD, true)
+        set(v) = sp.edit().putBoolean(KEY_VIA_BOARD, v).apply()
+
+    /** Bluetooth address of the BEStie board that exposed the BoschData Service; null until the first connection. */
+    var boardAddress: String?
+        get() = sp.getString(KEY_BOARD_ADDRESS, null)
+        set(v) = sp.edit().putString(KEY_BOARD_ADDRESS, v).apply()
+
     /** Bluetooth address of the bike that exposed the Live Data Service; null until the first connection. */
     var bikeAddress: String?
         get() = sp.getString(KEY_BIKE_ADDRESS, null)
@@ -42,6 +52,8 @@ class Prefs(ctx: Context) {
         private const val NAME = "bosch_data_prefs"
         private const val KEY_ENABLED        = "enabled"
         private const val KEY_BIKE_ADDRESS   = "bike_address"
+        private const val KEY_VIA_BOARD      = "via_board"
+        private const val KEY_BOARD_ADDRESS  = "board_address"
         private const val KEY_SENSOR_POWER   = "sensor_power"
         private const val KEY_SENSOR_CADENCE = "sensor_cadence"
         private const val KEY_SENSOR_SPEED   = "sensor_speed"
