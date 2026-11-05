@@ -87,3 +87,5 @@ No network, no account, no data leaves the Karoo. A log of the link lives in
 
 MIT, see [LICENSE](LICENSE). Not affiliated with Bosch or Hammerhead. "Bosch"
 and "Smart System" are trademarks of Robert Bosch GmbH.
+
+If you build on this code, or on its ideas, a mention is much appreciated: a link to this repository is enough.
