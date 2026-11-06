@@ -420,6 +420,12 @@ class BestieLink(
                 liveMsgs++; heartbeatLiveMsgs++
                 lastLiveMs = now
                 if (liveMsgs == 1L || how == "lettura") logger.log(TAG, "LIVE ($how, ${bytes.size} byte): $d")
+                // The read returns the board's last stored LIVE, also with the bike off: the
+                // STATUS read just before says whether the bike is there
+                if (how == "lettura" && board?.bikeConnected == false) {
+                    logger.log(TAG, "LIVE letto con la bici giù: dato vecchio, non mostrato")
+                    return
+                }
                 setBikeUp(true, "LIVE in arrivo")
                 listener.onLiveData(d)
             }
