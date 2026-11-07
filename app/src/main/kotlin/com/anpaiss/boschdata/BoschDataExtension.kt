@@ -38,8 +38,8 @@ import kotlinx.coroutines.launch
  * the Karoo itself as the LDI accessory ([LdiLink], which Android's address
  * rotation breaks at every restart). What the bike sends ([LiveData]) becomes:
  *
- *  - six data fields ([BikeFieldDataType]): battery, rider power, speed,
- *    cadence, odometer, light. Their streams carry the number: boschRange
+ *  - seven data fields ([BikeFieldDataType]): battery, rider power, speed,
+ *    cadence, odometer, light, and the BEStie board's own battery. Their streams carry the number: boschRange
  *    reads the battery from `TYPE_EXT::bosch-data::bike_battery`;
  *  - a Karoo sensor "Bosch eBike" ([startScan]/[connectDevice]) with power
  *    (the torque sensor), optionally cadence and speed: paired once from the
@@ -76,6 +76,7 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
         BikeFieldDataType(extension, "bike_cadence", BikeFieldDataType.Kind.CADENCE, bikeState, visibleDataTypeIds),
         BikeFieldDataType(extension, "bike_odometer", BikeFieldDataType.Kind.ODOMETER, bikeState, visibleDataTypeIds),
         BikeFieldDataType(extension, "bike_light", BikeFieldDataType.Kind.LIGHT, bikeState, visibleDataTypeIds),
+        BikeFieldDataType(extension, "board_battery", BikeFieldDataType.Kind.BOARD_BATTERY, bikeState, visibleDataTypeIds),
     ) }
 
     override fun onCreate() {
@@ -116,6 +117,10 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
                 logger.log("BIKE ", if (data.chargerConnected) "Caricabatterie collegato" else "Caricabatterie scollegato")
             if (data.lightOn != null && data.lightOn != before.lightOn) logger.log("BIKE ", "Luce ${if (data.lightOn) "accesa" else "spenta"}")
         }
+        override fun onBoard(battPct: Int?) {
+            val s = bikeState.value
+            if (battPct != s.boardBattPct) bikeState.value = s.copy(boardBattPct = battPct, boardLastPct = battPct ?: s.boardLastPct)
+        }
         override fun onLinkChanged(connected: Boolean) {
             bikeState.value = bikeState.value.copy(connected = connected)
             logger.log("BIKE ", if (connected) "Bici collegata: dati in arrivo" else "Bici scollegata: campi su --, sensore in ricerca")
@@ -133,7 +138,7 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
 
     private fun stopBikeLink() {
         bestie?.stop(); ldi?.stop()
-        bikeState.value = bikeState.value.copy(connected = false)
+        bikeState.value = bikeState.value.copy(connected = false, boardBattPct = null)
     }
 
     /** The ON/OFF switch of the app and the Bluetooth permissions: the link follows them. */

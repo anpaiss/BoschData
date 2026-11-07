@@ -54,6 +54,8 @@ class LdiLink(
     interface Listener {
         fun onLiveData(data: LiveData)
         fun onLinkChanged(connected: Boolean)
+        /** The BEStie board's own battery %, null when the board is not linked. */
+        fun onBoard(battPct: Int?) {}
     }
 
     companion object {

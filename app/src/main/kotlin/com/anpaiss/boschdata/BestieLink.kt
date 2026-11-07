@@ -273,6 +273,7 @@ class BestieLink(
         if (linked) {
             linked = false
             logger.log(TAG, "Link con la scheda chiuso ($why) dopo ${(System.currentTimeMillis() - linkedSinceMs) / 60_000} min, $liveMsgs LIVE in tutto")
+            listener.onBoard(null)
         }
         setBikeUp(false, "scheda scollegata")
     }
@@ -442,6 +443,7 @@ class BestieLink(
                     logger.log(TAG_STATUS, s.summary())
                 }
                 board = s
+                listener.onBoard(s.boardBattPct)
                 setBikeUp(s.bikeConnected, "STATUS")
             }
             BDS_LOG -> {

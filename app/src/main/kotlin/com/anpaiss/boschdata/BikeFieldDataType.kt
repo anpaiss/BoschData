@@ -35,6 +35,9 @@ data class BikeState(
     val lux: Double? = null,
     val chargerConnected: Boolean? = null,
     val locked: Boolean? = null,
+    /** The BEStie board's battery, null while the board is not linked; the last one read stays below. */
+    val boardBattPct: Int? = null,
+    val boardLastPct: Int? = null,
 ) {
     fun merge(d: LiveData, nowMs: Long) = copy(updatedMs = nowMs,
         socPct = d.socPct ?: socPct, riderPowerW = d.riderPowerW ?: riderPowerW, speedKmh = d.speedKmh ?: speedKmh,
@@ -58,15 +61,19 @@ class BikeFieldDataType(
     private val visibleDataTypeIds: StateFlow<Set<String>?>,
 ) : DataTypeImpl(extension, typeId) {
 
-    enum class Kind { BATTERY, POWER, SPEED, CADENCE, ODOMETER, LIGHT }
+    enum class Kind { BATTERY, POWER, SPEED, CADENCE, ODOMETER, LIGHT, BOARD_BATTERY }
     private data class Face(val caption: String, val value: String, val sub: String, val ok: Boolean)
 
     companion object {
         private const val REDRAW_THROTTLE_MS = 1_000L
         private const val CHAR_EM = 0.62f
+        /** Below this the board's field turns red: time to charge it. */
+        private const val BOARD_LOW_PCT = 20
     }
 
     private fun number(s: BikeState): Double? {
+        // The board's battery does not depend on the bike: it is there whenever the board is linked
+        if (kind == Kind.BOARD_BATTERY) return s.boardBattPct?.toDouble()
         if (!s.connected) return null
         return when (kind) {
             Kind.BATTERY  -> s.socPct?.toDouble()
@@ -75,6 +82,7 @@ class BikeFieldDataType(
             Kind.CADENCE  -> s.cadenceRpm?.toDouble()
             Kind.ODOMETER -> s.odometerM?.let { Math.round(it / 100.0) / 10.0 }
             Kind.LIGHT    -> s.lightOn?.let { if (it) 1.0 else 0.0 }
+            Kind.BOARD_BATTERY -> null
         }
     }
 
@@ -134,12 +142,18 @@ class BikeFieldDataType(
         Kind.CADENCE  -> s.cadenceRpm?.let { "$it" }
         Kind.ODOMETER -> s.odometerM?.let { "%.1f".format(it / 1000.0) }
         Kind.LIGHT    -> s.lightOn?.let { if (it) "ON" else "OFF" }
+        Kind.BOARD_BATTERY -> s.boardBattPct?.let { "$it %" }
     }
 
     private fun render(s: BikeState): Face {
+        if (kind == Kind.BOARD_BATTERY) {
+            val p = s.boardBattPct ?: return Face("BESTIE BATTERY", "--", s.boardLastPct?.let { "last $it %" } ?: "board not found", ok = false)
+            return Face("BESTIE BATTERY", "$p %", if (p < BOARD_LOW_PCT) "charge it" else "", ok = p >= BOARD_LOW_PCT)
+        }
         val caption = when (kind) {
             Kind.BATTERY -> "BIKE BATTERY"; Kind.POWER -> "RIDER POWER"; Kind.SPEED -> "BIKE SPEED"
             Kind.CADENCE -> "CADENCE"; Kind.ODOMETER -> "ODOMETER"; Kind.LIGHT -> "BIKE LIGHT"
+            Kind.BOARD_BATTERY -> "BESTIE BATTERY"
         }
         val v = value(s)
         if (!s.connected) return Face(caption, "--", if (v != null && kind != Kind.POWER && kind != Kind.SPEED && kind != Kind.CADENCE) "last $v" else "bike off", ok = false)
@@ -149,7 +163,7 @@ class BikeFieldDataType(
             Kind.CADENCE  -> "rpm"
             Kind.ODOMETER -> "km"
             Kind.LIGHT    -> s.lux?.let { "%.0f lx".format(it) } ?: ""
-            Kind.POWER    -> ""
+            Kind.POWER, Kind.BOARD_BATTERY -> ""
         }
         return Face(caption, v ?: "--", sub, ok = true)
     }

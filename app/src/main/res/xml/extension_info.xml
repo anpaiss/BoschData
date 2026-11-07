@@ -51,4 +51,11 @@
         graphical="true"
         icon="@drawable/ic_launcher" />
 
+    <DataType
+        typeId="board_battery"
+        displayName="@string/field_board_battery_name"
+        description="@string/field_board_battery_desc"
+        graphical="true"
+        icon="@drawable/ic_launcher" />
+
 </ExtensionInfo>
