@@ -453,10 +453,14 @@ class LdiLink(
         }
     }
 
+    /** LDI field numbers not in V1.0 already logged: each one once per run. */
+    private val unknownFields = mutableSetOf<Int>()
+
     private fun deliver(bytes: ByteArray): LiveData? {
         val d = runCatching { LiveData.decode(bytes) }
             .onFailure { logger.log(TAG, "Messaggio LiveData non decodificabile (${bytes.size} byte): ${it.message}") }
             .getOrNull() ?: return null
+        for ((f, v) in d.unknown) if (unknownFields.add(f)) logger.log(TAG, "Campo LDI sconosciuto $f = $v: un dato nuovo della bici")
         lastDataMs = System.currentTimeMillis()
         listener.onLiveData(d)
         return d

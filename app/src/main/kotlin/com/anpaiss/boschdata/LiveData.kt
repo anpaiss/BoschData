@@ -22,6 +22,8 @@ class LiveData(
     val lightReserve: Boolean? = null,
     val diagnosisActive: Boolean? = null,
     val notDriving: Boolean? = null,
+    /** Fields that LDI V1.0 does not define, by number: what Bosch adds in a later version (the assist mode?). */
+    val unknown: Map<Int, String> = emptyMap(),
 ) {
     override fun toString(): String = listOfNotNull(
         speedKmh?.let { "speed=%.2f km/h".format(it) },
@@ -46,6 +48,7 @@ class LiveData(
             var soc: Int? = null; var time: Long? = null; var odo: Long? = null; var light: Boolean? = null
             var locked: Boolean? = null; var charger: Boolean? = null; var reserve: Boolean? = null
             var diag: Boolean? = null; var notDriving: Boolean? = null
+            val unknown = mutableMapOf<Int, String>()
             var i = 0
             while (i < b.size) {
                 val (tag, n) = varint(b, i); i += n
@@ -67,15 +70,16 @@ class LiveData(
                             23 -> reserve = v != 0L
                             24 -> diag = v != 0L
                             25 -> notDriving = v != 0L
+                            else -> unknown[field] = v.toString()
                         }
                     }
-                    1 -> i += 8
-                    2 -> { val (len, m) = varint(b, i); i += m + len.toInt() }
-                    5 -> i += 4
+                    1 -> { unknown[field] = "8 bytes"; i += 8 }
+                    2 -> { val (len, m) = varint(b, i); unknown[field] = "$len bytes"; i += m + len.toInt() }
+                    5 -> { unknown[field] = "4 bytes"; i += 4 }
                     else -> throw IllegalArgumentException("wire type ${tag and 7} at $i")
                 }
             }
-            return LiveData(speed, cadence, power, lux, soc, time, odo, light, locked, charger, reserve, diag, notDriving)
+            return LiveData(speed, cadence, power, lux, soc, time, odo, light, locked, charger, reserve, diag, notDriving, unknown)
         }
 
         private fun varint(b: ByteArray, start: Int): Pair<Long, Int> {

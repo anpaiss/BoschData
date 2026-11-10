@@ -39,4 +39,12 @@ class LiveDataTest {
         assertEquals(44, d.socPct)
         assertThrows(IllegalArgumentException::class.java) { LiveData.decode(hex("58")) }
     }
+
+    @Test fun `fields LDI V1 does not define are kept by number, the known ones still decoded`() {
+        // SOC 43, then field 3 varint 4 (a future assist mode?) and field 13 length-delimited, 2 bytes
+        val d = LiveData.decode(hex("502b" + "1804" + "6a020102"))
+        assertEquals(43, d.socPct)
+        assertEquals(mapOf(3 to "4", 13 to "2 bytes"), d.unknown)
+        assertEquals(emptyMap<Int, String>(), LiveData.decode(hex("502b")).unknown)
+    }
 }
