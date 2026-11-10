@@ -15,3 +15,7 @@ Two snap-fit shells, no screws, no standoffs: the board and the battery are held
 
 `python slimcase.py out` regenerates the STLs, `python render.py preview.png out/*.stl` checks they are watertight and draws
 them, `python thickness.py out/slim-case-bottom.stl 1.45` lists every spot thinner than the threshold.
+
+Printed by PolyD in Nylon FAST (MJF PA12), delivered 10/11/2026: the lid closes, but hard. The 0.4 mm ridge on three
+sides with FIT 0.15 means about 0.25 mm of interference per side against stiff 3 mm walls. For a reprint: ridge
+0.25 mm on the long sides only (none on the antenna end), FIT 0.2.
