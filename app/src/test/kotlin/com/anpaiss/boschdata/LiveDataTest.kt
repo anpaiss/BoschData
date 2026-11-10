@@ -47,4 +47,14 @@ class LiveDataTest {
         assertEquals(mapOf(3 to "4", 13 to "2 bytes"), d.unknown)
         assertEquals(emptyMap<Int, String>(), LiveData.decode(hex("502b")).unknown)
     }
+
+    @Test fun `an unknown field is logged when first seen and at each change, a busy one once a minute`() {
+        val log = UnknownFieldLog()
+        assertEquals(1, log.lines(mapOf(3 to "2"), 0).size)
+        assertEquals(emptyList<String>(), log.lines(mapOf(3 to "2"), 1000))
+        assertEquals(listOf("Campo LDI sconosciuto 3: 2 -> 3"), log.lines(mapOf(3 to "3"), 2000))
+        for (i in 2..UnknownFieldLog.BUSY) assertEquals(1, log.lines(mapOf(3 to "$i$i"), 3000L + i).size)
+        assertEquals(emptyList<String>(), log.lines(mapOf(3 to "x"), 10_000))
+        assertEquals(1, log.lines(mapOf(3 to "y"), 70_000).size)
+    }
 }

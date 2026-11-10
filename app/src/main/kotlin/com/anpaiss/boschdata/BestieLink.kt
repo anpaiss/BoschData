@@ -410,8 +410,8 @@ class BestieLink(
 
     // ── Data ─────────────────────────────────────────────────────────────
 
-    /** LDI field numbers not in V1.0 already logged: each one once per run. */
-    private val unknownFields = mutableSetOf<Int>()
+    /** LDI fields not in V1.0: logged when first seen and at each change. */
+    private val unknownFields = UnknownFieldLog()
 
     private fun handle(uuid: UUID, bytes: ByteArray, how: String) {
         val now = System.currentTimeMillis()
@@ -422,7 +422,7 @@ class BestieLink(
                     .onFailure { logger.log(TAG, "LIVE non decodificabile (${bytes.size} byte): ${it.message}") }
                     .getOrNull() ?: return
                 liveMsgs++; heartbeatLiveMsgs++
-                for ((f, v) in d.unknown) if (unknownFields.add(f)) logger.log(TAG, "Campo LDI sconosciuto $f = $v: un dato nuovo della bici")
+                for (line in unknownFields.lines(d.unknown, System.currentTimeMillis())) logger.log(TAG, line)
                 lastLiveMs = now
                 if (liveMsgs == 1L || how == "lettura") logger.log(TAG, "LIVE ($how, ${bytes.size} byte): $d")
                 // The read returns the board's last stored LIVE, also with the bike off: the

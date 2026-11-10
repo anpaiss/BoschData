@@ -97,3 +97,30 @@ class LiveData(
         }
     }
 }
+
+/**
+ * Log lines for the LiveData fields that LDI V1.0 does not define: one each time a value
+ * changes, so a change made on the bike (the assist mode?) shows at its time. A field that
+ * keeps changing is cut to one line a minute after [BUSY] changes.
+ */
+class UnknownFieldLog {
+    private class Seen(var value: String, var changes: Int = 0, var loggedMs: Long = 0)
+    private val seen = mutableMapOf<Int, Seen>()
+
+    fun lines(unknown: Map<Int, String>, nowMs: Long): List<String> = unknown.mapNotNull { (f, v) ->
+        val s = seen[f]
+        when {
+            s == null -> { seen[f] = Seen(v, loggedMs = nowMs); "Campo LDI sconosciuto $f = $v: un dato nuovo della bici" }
+            s.value == v -> null
+            else -> {
+                val old = s.value; s.value = v; s.changes++
+                if (s.changes <= BUSY || nowMs - s.loggedMs >= 60_000) {
+                    s.loggedMs = nowMs
+                    "Campo LDI sconosciuto $f: $old -> $v" + if (s.changes == BUSY) " (cambia spesso: d'ora in poi una riga al minuto)" else ""
+                } else null
+            }
+        }
+    }
+
+    companion object { const val BUSY = 20 }
+}
