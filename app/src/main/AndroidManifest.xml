@@ -33,6 +33,10 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".FieldPreviewActivity"
+            android:exported="false" />
+
         <service
             android:name=".BoschDataExtension"
             android:exported="true"

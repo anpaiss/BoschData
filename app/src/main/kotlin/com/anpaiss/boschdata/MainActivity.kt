@@ -89,6 +89,10 @@ class MainActivity : AppCompatActivity() {
             setOnCheckedChangeListener { _, on -> prefs.fitBattery = on }
         })
 
+        root.addView(Button(this).apply {
+            text = "FIELD PREVIEW"
+            setOnClickListener { startActivity(android.content.Intent(this@MainActivity, FieldPreviewActivity::class.java)) }
+        })
         root.addView(Button(this).apply { text = "REFRESH"; setOnClickListener { refresh() } })
         root.addView(label("Log: /sdcard/Android/data/com.anpaiss.boschdata/files/bosch_data.log"))
 
