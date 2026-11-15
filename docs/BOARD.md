@@ -28,6 +28,8 @@ Express with a 500 mAh LiPo, in a small printed case, held on the frame by an el
 
 What I paid in Italy in November 2026, VAT included: the Feather 28.05 € (plus 7.92 € shipping), the LiPo 11.87 €, the printed case about 14 € plus shipping.
 
+Where I bought mine: the Feather from [Kiwi Electronics](https://www.kiwi-electronics.com/en/adafruit-feather-nrf52840-express-4259) in the Netherlands, the LiPo on [Amazon Italy](https://www.amazon.it/Batteria-562438-Ricaricabile-Connettore-JST-PHR-02/dp/B0FBCSTFG5). Any shop is fine: Adafruit lists [its distributors](https://www.adafruit.com/distributors) by country, and the same LiPo is on the other Amazon stores if you search for *562438 500mAh JST PH 2.0*. Whichever you buy, check the polarity (section 3).
+
 And of course: a **Karoo 3** with BoschData, and a **Bosch Smart System** bike with
 the Live Data Interface (control unit firmware v19 or later, CX Gen4, CX Gen5,
 SX). In Flow, your bike must offer adding a new device (Italian app: "Aggiungi nuovo dispositivo").
