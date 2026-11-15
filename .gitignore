@@ -26,3 +26,6 @@ reddit_post*.md
 
 # Local helper that reads the signing values from this PC, never committed
 set_secrets.ps1
+
+# Release drafts (Reddit post, publish checklist), not tracked
+/drafts

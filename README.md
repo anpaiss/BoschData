@@ -52,9 +52,14 @@ route without asking you anything.
   firmware v19 (May 2026) or later, drive units CX Gen4, CX Gen5, SX. Check
   with the Bosch Flow app that "Add component → Accessories" exists.
 - For the automatic link: a BEStie board, an nRF52840 board (tested: Adafruit
-  Feather nRF52840 Express with a LiPo) flashed with the BEStie firmware plus the
-  small BoschData service of this project (Karoo build). The firmware addition
-  is not published yet; it will be, with the first release.
+  Feather nRF52840 Express with a 500 mAh LiPo) flashed with the Karoo build of
+  the BEStie firmware: [my fork](https://github.com/anpaiss/BEStie), GPL-3, of
+  [bestie-org/BEStie](https://github.com/bestie-org/BEStie), which adds a small
+  BoschData service the Karoo reads. Firmware files on the
+  [firmware release](https://github.com/anpaiss/BEStie/releases/latest).
+  **Step-by-step guide**, from the parts to buy to the board on the bike:
+  [Build the board](https://lagorai.bike/extensions/boschdata/board/) (copy in
+  [docs/BOARD.md](docs/BOARD.md)).
 
 ## Install
 
@@ -64,7 +69,8 @@ route without asking you anything.
 2. Open BoschData on the Karoo and press **GRANT BLUETOOTH** if the line "Bike:"
    says the permission is missing.
 3. Pair, once.
-   - **With the board** (box "Through the BEStie board" ticked, the default):
+   - **With the board** (box "Through the BEStie board" ticked, the default),
+     built and flashed as in [the guide](https://lagorai.bike/extensions/boschdata/board/):
      power the board, switch the bike on, Bosch Flow app → **Add component →
      Accessories** → "BEStie". The Karoo finds the board by itself; from then on
      the bike reconnects to the board whenever it is switched on.
@@ -73,6 +79,18 @@ route without asking you anything.
      (that is the Karoo). Repeat after every Bluetooth restart.
 4. Put the fields you want on your ride pages. For the sensor: Karoo
    **Sensors → add sensor**, choose BoschData → Bosch eBike.
+
+## Tested
+
+- Garage, 10 November 2026: 752 messages from the bike, none lost; data on the
+  Karoo 3 s after switching the bike on; bike off and on again, the board
+  reconnected it alone in 2–4 s.
+- First real ride, 15 November 2026: board linked for 42 minutes, 10,175
+  messages from the bike, 0 dropped, no reconnection needed; bike battery
+  100 → 90 % in the FIT file every 5 s; the bike odometer moved about 6 km,
+  the same as Bosch Flow. Board battery 96 → 95 %.
+- Not available: the assist mode. The current Bosch firmware does not send it
+  over the Live Data Interface.
 
 ## How it works
 
