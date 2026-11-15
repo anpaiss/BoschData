@@ -31,6 +31,14 @@ the Karoo's Bluetooth is switched off (see [Why the board](#why-the-board)).
 
 The bike fields show `--` while the bike is off, the board field while the board is not found.
 
+**A virtual sensor, "Bosch eBike".** BoschData also offers the bike to the
+Karoo as a sensor: your rider power (on by default), and optionally cadence and
+speed. Nothing new to put on the bike: the sensor is made by the app from the
+data the board receives. Pair it once in the Karoo **Sensors → + → Extensions**
+(the fourth icon, the puzzle piece: it is not under Bluetooth or ANT+) and pick
+**Bosch eBike**. The Karoo then treats it like a power meter. The power in the
+FIT file is still to be checked on a real ride: I will update this line.
+
 **The battery in the FIT file.** The battery % is written in every ride file
 as the developer field `bosch_battery`, so every ride gives you its discharge
 curve point by point (on by default, switch in the app).
