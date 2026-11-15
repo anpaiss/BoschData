@@ -10,7 +10,7 @@ switch it on, and the Karoo reads the board. No soldering, about an hour the
 first time, most of it waiting for parts.
 
 What I use, and the only setup I have tested: an Adafruit Feather nRF52840
-Express with a 500 mAh LiPo, in a small printed case, stuck to the bike.
+Express with a 500 mAh LiPo, in a small printed case, held on the frame by an elastic strap.
 
 ## 1. What to buy
 
