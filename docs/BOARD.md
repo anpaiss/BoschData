@@ -161,6 +161,8 @@ it is all it needs.
 
 ![The very thin black adhesive foam, inside the case and under it](thin-foam.jpg)
 
+![On my bike: the case on the top tube, next to the seat tube, held by the elastic strap](on-the-bike.jpg)
+
 Keep the USB opening reachable, so you charge without opening the case.
 
 ## 8. Does it work?
