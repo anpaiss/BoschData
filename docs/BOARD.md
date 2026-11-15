@@ -29,7 +29,7 @@ For me board, LiPo and printed case came to roughly 50 euro in all.
 
 And of course: a **Karoo 3** with BoschData, and a **Bosch Smart System** bike with
 the Live Data Interface (control unit firmware v19 or later, CX Gen4, CX Gen5,
-SX). In Flow, "Add component → Accessories" must exist.
+SX). In Flow, your bike must offer adding a new device (Italian app: "Aggiungi nuovo dispositivo").
 
 ## 2. The case (or no case)
 
@@ -126,7 +126,7 @@ called `BEStie`. Do not pair it from the phone; just look.
 ## 5. Pair the board with the bike (Bosch Flow, once)
 
 1. Switch the bike on, board powered (LiPo plugged in).
-2. In the Bosch Flow app: **Add component → Accessories → "BEStie"**, and
+2. In the Bosch Flow app: add a new device to the bike (Italian app: **Aggiungi nuovo dispositivo**) and pick **"BEStie"**, and
    confirm. In the bike's list of components the board then shows up as an
    external display called BEStie.
 3. Close Flow. Switch the bike off and on again: from now on the bike finds

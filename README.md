@@ -50,7 +50,7 @@ route without asking you anything.
 - Karoo 3 (the Karoo 2 cannot act as a Bluetooth accessory).
 - A Bosch Smart System bike with the Live Data Interface: control unit
   firmware v19 (May 2026) or later, drive units CX Gen4, CX Gen5, SX. Check
-  with the Bosch Flow app that "Add component → Accessories" exists.
+  in the Bosch Flow app that your bike offers adding a new device (Italian app: "Aggiungi nuovo dispositivo").
 - For the automatic link: a BEStie board, an nRF52840 board (tested: Adafruit
   Feather nRF52840 Express with a 500 mAh LiPo) flashed with the Karoo build of
   the BEStie firmware: [my fork](https://github.com/anpaiss/BEStie), GPL-3, of
@@ -71,11 +71,11 @@ route without asking you anything.
 3. Pair, once.
    - **With the board** (box "Through the BEStie board" ticked, the default),
      built and flashed as in [the guide](https://lagorai.bike/extensions/boschdata/board/):
-     power the board, switch the bike on, Bosch Flow app → **Add component →
-     Accessories** → "BEStie". The Karoo finds the board by itself; from then on
+     power the board, switch the bike on, in the Bosch Flow app add a new device to the bike
+     (Italian app: **Aggiungi nuovo dispositivo**) and pick "BEStie". The Karoo finds the board by itself; from then on
      the bike reconnects to the board whenever it is switched on.
    - **Direct link** (box unticked): switch the bike on, tap **PAIR BIKE** on
-     the Karoo, then in Flow **Add component → Accessories** → "Karoo BT Audio"
+     the Karoo, then in Flow add a new device (Italian app: **Aggiungi nuovo dispositivo**) → "Karoo BT Audio"
      (that is the Karoo). Repeat after every Bluetooth restart.
 4. Put the fields you want on your ride pages. For the sensor: Karoo
    **Sensors → add sensor**, choose BoschData → Bosch eBike.
