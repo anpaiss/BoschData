@@ -20,7 +20,7 @@ Express with a 500 mAh LiPo, in a small printed case, stuck to the bike.
 | **LiPo battery, 1 cell 3.7 V, 500 mAh, JST-PH 2.0 plug** | Powers the board for weeks. Mine is a 562438 size (about 5.6 × 24 × 38 mm), which fits the case. **Check the polarity** before plugging it in (section 3). |
 | **Micro-USB cable** that carries data, not a charge-only one | Flashing the firmware and charging the LiPo. |
 | **Case** (optional) | My slim printed case, files in [`hardware/slimcase`](../hardware/slimcase). |
-| **3M double-sided foam tape**: `TODO_3M_TAPE` | Holds the board and its LiPo together, and both in the case: floor → tape → LiPo → tape → board. |
+| **3M VHB double-sided tape** (the red-liner foam tape) | Holds the board and its LiPo together, and both in the case: floor → tape → LiPo → tape → board. |
 | A computer with **Chrome** (or another Chromium browser) | The web page that updates the bootloader. |
 | Your phone with the **Bosch Flow** app | Pairing the board with the bike, once. |
 
@@ -147,10 +147,10 @@ called `BEStie`. Do not pair it from the phone; just look.
 
 ## 7. Mount it on the bike
 
-The board sits on its LiPo, held by 3M double-sided foam tape: `TODO_3M_TAPE`
-(product name and photo coming).
+The board sits on its LiPo, held by 3M VHB double-sided tape, the one with the
+red liner:
 
-`[TODO photo: board and LiPo taped together, and the tape]`
+![The roll of 3M VHB double-sided tape I used, red liner with the 3M VHB print](3m-vhb-tape.jpg)
 
 `TODO_MOUNT: where the case goes on the bike.`
 
