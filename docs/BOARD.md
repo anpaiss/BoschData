@@ -144,8 +144,7 @@ called `BEStie`. Do not pair it from the phone; just look.
    `board linked, bike UP, board batt NN %, …`. The Karoo remembers the board
    from then on.
 5. Put the fields on a ride page, among them **BEStie battery** so you see
-   when the board needs charging. Optional: Karoo **Sensors → add sensor →
-   BoschData → Bosch eBike** for the rider power as a power meter.
+   when the board needs charging.
 
 ## 7. Mount it on the bike
 
@@ -186,7 +185,7 @@ My numbers:
   again, the board reconnected it alone in 2–4 s.
 - **First real ride, 15 November 2026**: board linked from 10:19 to 11:01,
   10,175 messages from the bike, 0 dropped, no reconnection needed. Bike battery
-  100 → 90 %, written to the FIT file every 5 s (370 values). The bike odometer
+  100 → 90 %, written to the FIT file every 5 s (503 values). The bike odometer
   moved about 6 km, the same as Bosch Flow (6.0 km).
 
 ## 9. Battery life of the board

@@ -31,11 +31,6 @@ the Karoo's Bluetooth is switched off (see [Why the board](#why-the-board)).
 
 The bike fields show `--` while the bike is off, the board field while the board is not found.
 
-**The bike as a Karoo sensor.** BoschData offers a "Bosch eBike" sensor with
-the rider power (on by default), and optionally cadence and speed. Pair it once
-from the Karoo sensors menu and the Karoo treats it like a power meter: power
-in the FIT file, on Strava, in the training metrics and zones.
-
 **The battery in the FIT file.** The battery % is written in every ride file
 as the developer field `bosch_battery`, so every ride gives you its discharge
 curve point by point (on by default, switch in the app).
