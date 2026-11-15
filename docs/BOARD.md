@@ -160,6 +160,8 @@ it is all it needs.
 
 ![The very thin black adhesive foam, inside the case and under it](thin-foam.jpg)
 
+![The case open: the board sits on its LiPo, held by 3M VHB tape, on very thin foam against vibration.](board-in-case.jpg)
+
 ![On my bike, under the saddle: the case on the top tube, next to the seat tube, held by the elastic strap. The saddle gives the size](on-the-bike.jpg)
 
 Keep the USB opening reachable, so you charge without opening the case.
