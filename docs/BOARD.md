@@ -20,7 +20,9 @@ Express with a 500 mAh LiPo, in a small printed case, stuck to the bike.
 | **LiPo battery, 1 cell 3.7 V, 500 mAh, JST-PH 2.0 plug** | Powers the board for weeks. Mine is a 562438 size (about 5.6 × 24 × 38 mm), which fits the case. **Check the polarity** before plugging it in (section 3). |
 | **Micro-USB cable** that carries data, not a charge-only one | Flashing the firmware and charging the LiPo. |
 | **Case** (optional) | My slim printed case, files in [`hardware/slimcase`](../hardware/slimcase). |
-| **3M VHB double-sided tape** (the red-liner foam tape) | Holds the board and its LiPo together, and both in the case: floor → tape → LiPo → tape → board. |
+| **3M VHB double-sided tape** (the red-liner foam tape) | Holds the board and its LiPo together. |
+| **Very thin adhesive foam** | Inside the case, against vibration; and on the outside, where the case rests on the frame, against scratches. |
+| **An elastic strap** | Holds the case on the frame: it weighs very little. |
 | A computer with **Chrome** (or another Chromium browser) | The web page that updates the bootloader. |
 | Your phone with the **Bosch Flow** app | Pairing the board with the bike, once. |
 
@@ -41,8 +43,8 @@ opening it. The STL files and the script that makes them are in
   prints PA12 should do; the files pass the 1.5 mm minimum wall checks.
 - Honest note: with these files the lid closes, but **hard**. The case README
   says what to change for a reprint (smaller ridge, more play).
-- Inside: LiPo on the floor on foam tape, the board on top of the LiPo on foam
-  tape, the **USB end** of the board at the opening. The LiPo goes under the
+- Inside: the case lined with the thin foam, the LiPo, and the board on top of
+  the LiPo held by the VHB tape, the **USB end** of the board at the opening. The LiPo goes under the
   USB half of the board; the other end, with the antenna, stays free.
 
 **No case?** The board works the same in any small box or pouch that keeps
@@ -152,7 +154,12 @@ red liner:
 
 ![The roll of 3M VHB double-sided tape I used, red liner with the 3M VHB print](3m-vhb-tape.jpg)
 
-`TODO_MOUNT: where the case goes on the bike.`
+Inside the case, and on the outside where it rests on the frame, I put a very
+thin adhesive foam: inside against vibration, outside so it does not scratch the
+frame. The case goes on the frame with an elastic strap; it weighs so little that
+it is all it needs.
+
+![The very thin black adhesive foam, inside the case and under it](thin-foam.jpg)
 
 Keep the USB opening reachable, so you charge without opening the case.
 
