@@ -81,11 +81,12 @@ val generateManifest by tasks.registering {
               "latestVersion": ${q(version)},
               "latestVersionCode": $code,
               "developer": "Andrea Paissan",
-              "description": ${q("Your Bosch Smart System e-bike on the Karoo: battery, rider power, speed, cadence, odometer and light as data fields, the bike as a power/cadence/speed sensor, the battery in the FIT file. Bluetooth, no extra hardware.")},
+              "description": ${q("Your Bosch Smart System e-bike on the Karoo: battery, rider power, speed, cadence, odometer and light as data fields, the bike as a Karoo sensor, the battery % in the FIT file of every ride. Needs a small BEStie board (about 54 euro of parts, no soldering) that keeps the link with the bike: guide at lagorai.bike/extensions/boschdata/board/")},
               "releaseNotes": ${q(notes)},
               "screenshotUrls": [
-                ${q("https://raw.githubusercontent.com/anpaiss/BoschData/master/docs/fields.png")},
-                ${q("https://raw.githubusercontent.com/anpaiss/BoschData/master/docs/app.png")}
+                ${q("https://raw.githubusercontent.com/anpaiss/BoschData/master/docs/app.png")},
+                ${q("https://raw.githubusercontent.com/anpaiss/BoschData/master/docs/on-the-bike.jpg")},
+                ${q("https://raw.githubusercontent.com/anpaiss/BoschData/master/docs/board-in-case.jpg")}
               ],
               "tags": ["sensors"]
             }
