@@ -92,6 +92,8 @@ route without asking you anything.
   messages from the bike, 0 dropped, no reconnection needed; bike battery
   100 → 90 % in the FIT file every 5 s; the bike odometer moved about 6 km,
   the same as Bosch Flow. Board battery 96 → 95 %.
+- Reported by a user on the Hammerhead forum, 20 November 2026: working on a
+  2023 CX and a 2026 SX.
 - Not available: the assist mode. The current Bosch firmware does not send it
   over the Live Data Interface.
 
