@@ -36,8 +36,11 @@ Karoo as a sensor: your rider power (on by default), and optionally cadence and
 speed. Nothing new to put on the bike: the sensor is made by the app from the
 data the board receives. Pair it once in the Karoo **Sensors → + → Extensions**
 (the fourth icon, the puzzle piece: it is not under Bluetooth or ANT+) and pick
-**Bosch eBike**. The Karoo then treats it like a power meter. The power in the
-FIT file is still to be checked on a real ride: I will update this line.
+**Bosch eBike**. The Karoo then treats it like a power meter: the FIT file of
+every ride gets **your** watts only, the motor's assist is not counted, so
+Strava, TSS and NP reflect your own effort. Checked on a real ride against the
+Bosch Flow app (21/11/2026, 19 km, 764 m climbing): 92 W average and 399 W max
+on both.
 
 **The battery in the FIT file.** The battery % is written in every ride file
 as the developer field `bosch_battery`, so every ride gives you its discharge
