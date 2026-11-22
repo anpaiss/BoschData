@@ -100,6 +100,27 @@ route without asking you anything.
 - Not available: the assist mode. The current Bosch firmware does not send it
   over the Live Data Interface.
 
+## Known issue: fields turn red when the ride starts
+
+If the fields are green before the ride and all turn red, BESTIE BATTERY
+included, as soon as you press START, the cause is neither BoschData nor the
+board: it is the Karoo itself. On a Karoo with no Bluetooth LE device paired,
+Hammerhead's own sensor service (`io.hammerhead.sensorservice`) switches
+Android Bluetooth off when recording starts and back on when it stops. Without
+Bluetooth no extension can talk to the board. The Karoo's own sensors keep
+working because they use a separate radio.
+
+**Fix:** pair any Bluetooth LE sensor in the Karoo's **Sensors** menu (a heart
+rate strap, for example) and keep it in the ride profile. Bluetooth then stays
+on during the ride. Found with a user in
+[issue #1](https://github.com/anpaiss/BoschData/issues/1), 22 November 2026.
+
+To check it with adb, during a recording:
+`adb shell "dumpsys bluetooth_manager | grep -A20 'Enable log'"` shows
+`Disabled due to APPLICATION_REQUEST by io.hammerhead.sensorservice`, and
+`adb shell "dumpsys bluetooth_manager | grep -A6 'Bonded devices'"` shows an
+empty list.
+
 ## How it works
 
 The bike is the one that scans and connects: a Live Data Interface accessory
