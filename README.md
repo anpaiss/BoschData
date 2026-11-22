@@ -15,6 +15,17 @@ board stays paired with the bike and the Karoo reads the board. Without it the
 Karoo can pair with the bike directly, but the link lasts only until the bike or
 the Karoo's Bluetooth is switched off (see [Why the board](#why-the-board)).
 
+## What's new in 1.1
+
+- **Bike link**, a new field with the state of the link to the bike. Tap it on
+  the ride page for what to do.
+- **Orange for a warning, red for an error.** A bike just switched off turns
+  the fields orange, not red.
+- **When the Karoo turns Bluetooth off at START**, BoschData now says so: BT
+  OFF on the Bike link field and an alert once per ride. This is the Karoo's
+  doing, not BoschData's or the board's: see
+  [Known issue](#known-issue-fields-turn-red-when-the-ride-starts) for the fix.
+
 ## What you get
 
 **Eight data fields**, to put on any ride page:
