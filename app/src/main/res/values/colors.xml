@@ -3,8 +3,9 @@
     <!-- Data field text: the Karoo draws fields on its own background (day white / night black) -->
     <color name="page_text">#000000</color>
     <color name="page_muted">#666666</color>
-    <!-- Field background: green with the bike connected, red without; the text stays white on both -->
+    <!-- Field background: green with the bike connected, orange for a warning (bike off), red for an error; the text stays white -->
     <color name="field_ok">#2E7D32</color>
+    <color name="field_warn">#E65100</color>
     <color name="field_bad">#C62828</color>
     <color name="field_text">#FFFFFF</color>
     <color name="field_text_muted">#D9FFFFFF</color>

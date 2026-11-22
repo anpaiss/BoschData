@@ -58,4 +58,11 @@
         graphical="true"
         icon="@drawable/ic_launcher" />
 
+    <DataType
+        typeId="bike_link"
+        displayName="@string/field_bike_link_name"
+        description="@string/field_bike_link_desc"
+        graphical="true"
+        icon="@drawable/ic_launcher" />
+
 </ExtensionInfo>

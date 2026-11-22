@@ -15,6 +15,11 @@
     <string name="field_bike_odometer_desc">Total km of the Bosch bike, over Bluetooth</string>
     <string name="field_bike_light_name">Bike light</string>
     <string name="field_board_battery_name">BEStie battery</string>
-    <string name="field_board_battery_desc">Battery % of the BEStie board, red below 20 %: time to charge it. "--" while the board is not found</string>
+    <string name="field_board_battery_desc">Battery % of the BEStie board, orange below 20 %: time to charge it. "--" while the board is not found</string>
     <string name="field_bike_light_desc">Bike light ON/OFF and ambient brightness, over Bluetooth from the Bosch bike</string>
+    <string name="field_bike_link_name">Bike link</string>
+    <string name="field_bike_link_desc">State of the link: LINKED, BIKE OFF, NO BOARD, BT OFF. Green ok, orange warning, red error. Tap it for help</string>
+    <!-- The Karoo alert shows one line of title and two of text: keep both short -->
+    <string name="alert_bt_off_title">Bluetooth off</string>
+    <string name="alert_bt_off_text">Karoo turned it off. Tap BIKE LINK</string>
 </resources>

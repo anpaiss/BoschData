@@ -1,5 +1,12 @@
 package com.anpaiss.boschdata
 
+import android.annotation.SuppressLint
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import io.hammerhead.karooext.KarooSystemService
@@ -16,6 +23,7 @@ import io.hammerhead.karooext.models.Device
 import io.hammerhead.karooext.models.DeviceEvent
 import io.hammerhead.karooext.models.FieldValue
 import io.hammerhead.karooext.models.FitEffect
+import io.hammerhead.karooext.models.InRideAlert
 import io.hammerhead.karooext.models.ManufacturerInfo
 import io.hammerhead.karooext.models.OnBatteryStatus
 import io.hammerhead.karooext.models.OnConnectionStatus
@@ -38,8 +46,9 @@ import kotlinx.coroutines.launch
  * the Karoo itself as the LDI accessory ([LdiLink], which Android's address
  * rotation breaks at every restart). What the bike sends ([LiveData]) becomes:
  *
- *  - seven data fields ([BikeFieldDataType]): battery, rider power, speed,
- *    cadence, odometer, light, and the BEStie board's own battery. Their streams carry the number: boschRange
+ *  - eight data fields ([BikeFieldDataType]): battery, rider power, speed,
+ *    cadence, odometer, light, the BEStie board's own battery, and BIKE LINK
+ *    (the state of the link, a tap opens [LinkHelpActivity]). Their streams carry the number: boschRange
  *    reads the battery from `TYPE_EXT::bosch-data::bike_battery`;
  *  - a Karoo sensor "Bosch eBike" ([startScan]/[connectDevice]) with power
  *    (the torque sensor), optionally cadence and speed: paired once from the
@@ -77,7 +86,30 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
         BikeFieldDataType(extension, "bike_odometer", BikeFieldDataType.Kind.ODOMETER, bikeState, visibleDataTypeIds),
         BikeFieldDataType(extension, "bike_light", BikeFieldDataType.Kind.LIGHT, bikeState, visibleDataTypeIds),
         BikeFieldDataType(extension, "board_battery", BikeFieldDataType.Kind.BOARD_BATTERY, bikeState, visibleDataTypeIds),
+        BikeFieldDataType(extension, "bike_link", BikeFieldDataType.Kind.LINK, bikeState, visibleDataTypeIds),
     ) }
+
+    /** The "Bluetooth off" alert, once per ride (reset at every FIT start). */
+    @Volatile private var btAlertShown = false
+
+    // Android Bluetooth on/off: on a Karoo with no Bluetooth LE device paired, Hammerhead's sensor
+    // service switches it off at START (issue #1). The field says so and the rider gets one alert.
+    private val btReceiver = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) {
+            when (i.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1)) {
+                BluetoothAdapter.STATE_ON -> bikeState.value = bikeState.value.copy(btOn = true)
+                BluetoothAdapter.STATE_TURNING_OFF, BluetoothAdapter.STATE_OFF -> {
+                    val s = bikeState.value
+                    if (s.btOn) bikeState.value = s.copy(btOn = false)
+                    if (s.recording && s.enabled && !btAlertShown) {
+                        btAlertShown = true
+                        logger.log("SYS  ", "Bluetooth spento a registrazione in corso: avviso al ciclista")
+                        showBluetoothOffAlert()
+                    }
+                }
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -91,6 +123,9 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
         }
         ldi = LdiLink(applicationContext, logger, prefs, ldiListener)
         bestie = BestieLink(applicationContext, logger, prefs, ldiListener)
+        bikeState.value = bikeState.value.copy(enabled = prefs.enabled, permission = bluetoothGranted(), viaBoard = prefs.viaBoard,
+            btOn = getSystemService(BluetoothManager::class.java)?.adapter?.isEnabled == true)
+        registerReceiver(btReceiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
         if (prefs.enabled) startBikeLink()
         karooSystem = KarooSystemService(applicationContext).also { ks ->
             ks.connect { _ ->
@@ -121,6 +156,9 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
             val s = bikeState.value
             if (battPct != s.boardBattPct) bikeState.value = s.copy(boardBattPct = battPct, boardLastPct = battPct ?: s.boardLastPct)
         }
+        override fun onBoardLink(linked: Boolean) {
+            bikeState.value = bikeState.value.copy(boardLinked = linked)
+        }
         override fun onLinkChanged(connected: Boolean) {
             bikeState.value = bikeState.value.copy(connected = connected)
             logger.log("BIKE ", if (connected) "Bici collegata: dati in arrivo" else "Bici scollegata: campi su --, sensore in ricerca")
@@ -131,6 +169,7 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
         BLUETOOTH_PERMISSIONS.all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
 
     private fun startBikeLink() {
+        bikeState.value = bikeState.value.copy(permission = bluetoothGranted())
         if (!bluetoothGranted()) { logger.log("LDI  ", "Permessi Bluetooth assenti: collegamento alla bici non avviato (concederli nell'app)"); return }
         if (prefs.viaBoard) runCatching { bestie?.start() }.onFailure { logger.logError("BEST ", "Avvio del client verso la scheda fallito", it) }
         else runCatching { ldi?.start() }.onFailure { logger.logError("LDI  ", "Avvio del collegamento alla bici fallito", it) }
@@ -138,17 +177,19 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
 
     private fun stopBikeLink() {
         bestie?.stop(); ldi?.stop()
-        bikeState.value = bikeState.value.copy(connected = false, boardBattPct = null)
+        bikeState.value = bikeState.value.copy(connected = false, boardBattPct = null, boardLinked = false)
     }
 
     /** The ON/OFF switch of the app and the Bluetooth permissions: the link follows them. */
     fun onEnabledChanged(on: Boolean) {
+        bikeState.value = bikeState.value.copy(enabled = on, permission = bluetoothGranted())
         if (on) startBikeLink() else stopBikeLink()
     }
 
     /** The source switch in the app: stop one link, start the other. */
     fun onSourceChanged(viaBoard: Boolean) {
         prefs.viaBoard = viaBoard
+        bikeState.value = bikeState.value.copy(viaBoard = viaBoard)
         logger.log("SYS  ", "Fonte dei dati: ${if (viaBoard) "scheda BEStie" else "bici diretta"}")
         stopBikeLink()
         if (prefs.enabled) startBikeLink()
@@ -156,14 +197,38 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
 
     /** The PAIR BIKE button (direct link): start the pairing from scratch. */
     fun pairBike() {
-        bikeState.value = BikeState()
+        bikeState.value = bikeState.value.cleared()
         ldi?.forgetBike()
     }
 
     /** The FORGET BOARD button (board link): look for any BEStie again. */
     fun forgetBoard() {
-        bikeState.value = BikeState()
+        bikeState.value = bikeState.value.cleared()
         bestie?.forgetBoard()
+    }
+
+    // ── BIKE LINK: help popup and alert ───────────────────────────────────
+
+    fun currentState(): BikeState = bikeState.value
+
+    /** SEARCH AGAIN in the popup. */
+    fun searchAgain() { bestie?.searchAgain() }
+
+    /** TURN BLUETOOTH ON in the popup: once, only when the rider asks (never automatically, to avoid a tug of war with the Karoo). */
+    @SuppressLint("MissingPermission")
+    @Suppress("DEPRECATION")
+    fun turnBluetoothOn(): Boolean {
+        val ok = runCatching { getSystemService(BluetoothManager::class.java)?.adapter?.enable() == true }
+            .onFailure { logger.logError("SYS  ", "Accensione del Bluetooth fallita", it) }.getOrDefault(false)
+        logger.log("SYS  ", "TURN BLUETOOTH ON dal campo BIKE LINK: ${if (ok) "richiesta accettata" else "rifiutata"}")
+        return ok
+    }
+
+    /** TEST POPUP in the app, and the real alert when Bluetooth goes off during a ride. */
+    fun showBluetoothOffAlert() {
+        karooSystem?.dispatch(InRideAlert("bosch-data-bt-off", R.drawable.ic_launcher,
+            getString(R.string.alert_bt_off_title), getString(R.string.alert_bt_off_text), 15_000L,
+            R.color.field_bad, R.color.field_text))
     }
 
     /** For the app screen. */
@@ -227,6 +292,8 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
 
     override fun startFit(emitter: Emitter<FitEffect>) {
         logger.log("FIT  ", "Scrittura FIT avviata: campo bosch_battery ogni ${FIT_PERIOD_MS / 1000} s con la bici collegata")
+        btAlertShown = false
+        bikeState.value = bikeState.value.copy(recording = true)
         var records = 0L
         val job = scope.launch {
             while (true) {
@@ -239,10 +306,15 @@ class BoschDataExtension : KarooExtension("bosch-data", BuildConfig.VERSION_NAME
                 delay(FIT_PERIOD_MS)
             }
         }
-        emitter.setCancellable { job.cancel(); logger.log("FIT  ", "Scrittura FIT fermata dopo $records valori") }
+        emitter.setCancellable {
+            job.cancel()
+            bikeState.value = bikeState.value.copy(recording = false)
+            logger.log("FIT  ", "Scrittura FIT fermata dopo $records valori")
+        }
     }
 
     override fun onDestroy() {
+        runCatching { unregisterReceiver(btReceiver) }
         consumerIds.forEach { id -> karooSystem?.removeConsumer(id) }
         karooSystem?.disconnect()
         bestie?.stop()

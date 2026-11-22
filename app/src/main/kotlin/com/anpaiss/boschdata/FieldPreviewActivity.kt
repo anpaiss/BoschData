@@ -32,7 +32,7 @@ class FieldPreviewActivity : AppCompatActivity() {
     /** A cell as the Karoo describes it in ViewConfig; sizes read from the VIEW log lines of the k24. */
     private class Cell(val w: Int, val h: Int, val grid: Pair<Int, Int>, val textSp: Int)
 
-    private enum class Values(val label: String) { SAMPLE("SAMPLE"), LONGEST("LONGEST"), BIKE_OFF("BIKE OFF") }
+    private enum class Values(val label: String) { SAMPLE("SAMPLE"), LONGEST("LONGEST"), BIKE_OFF("BIKE OFF"), NO_BOARD("NO BOARD"), BT_OFF("BT OFF") }
 
     private companion object {
         val HALF = Cell(238, 126, 30 to 12, 41)
@@ -140,15 +140,19 @@ class FieldPreviewActivity : AppCompatActivity() {
         val riding = BikeState(
             connected = true, updatedMs = System.currentTimeMillis(), socPct = 73, riderPowerW = 185, speedKmh = 17.4,
             cadenceRpm = 78, odometerM = 2_345_600L, lightOn = false, lux = 420.0, chargerConnected = false, locked = false,
-            boardBattPct = 96, boardLastPct = 96,
+            boardBattPct = 96, boardLastPct = 96, boardLinked = true,
         )
         return when (values) {
             Values.SAMPLE -> riding
             // The widest texts: three and four digits, the odometer with five, every sub-caption present
             Values.LONGEST -> riding.copy(socPct = 100, riderPowerW = 1000, speedKmh = 45.5, cadenceRpm = 120,
                 odometerM = 12_345_600L, lightOn = true, lux = 12_000.0, chargerConnected = true, boardBattPct = 12)
-            // Bike switched off and board out of reach: the last values move to the sub-caption
-            Values.BIKE_OFF -> riding.copy(connected = false, odometerM = 12_345_600L, boardBattPct = null, boardLastPct = 100)
+            // Bike switched off, board linked: orange, the last values move to the sub-caption
+            Values.BIKE_OFF -> riding.copy(connected = false, odometerM = 12_345_600L)
+            // Board out of reach: red
+            Values.NO_BOARD -> riding.copy(connected = false, boardLinked = false, boardBattPct = null, boardLastPct = 100)
+            // Bluetooth switched off by the Karoo during a ride (issue #1): red
+            Values.BT_OFF -> riding.copy(connected = false, boardLinked = false, boardBattPct = null, btOn = false, recording = true)
         }
     }
 }

@@ -56,6 +56,8 @@ class LdiLink(
         fun onLinkChanged(connected: Boolean)
         /** The BEStie board's own battery %, null when the board is not linked. */
         fun onBoard(battPct: Int?) {}
+        /** The link with the BEStie board opened (subscriptions done) or closed. */
+        fun onBoardLink(linked: Boolean) {}
     }
 
     companion object {

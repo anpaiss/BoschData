@@ -17,7 +17,7 @@ the Karoo's Bluetooth is switched off (see [Why the board](#why-the-board)).
 
 ## What you get
 
-**Seven data fields**, to put on any ride page:
+**Eight data fields**, to put on any ride page:
 
 | Field | Shows |
 |---|---|
@@ -27,9 +27,13 @@ the Karoo's Bluetooth is switched off (see [Why the board](#why-the-board)).
 | Cadence (Bosch) | Your cadence, rpm |
 | Bike odometer | Total km of the bike |
 | Bike light | Light ON/OFF and the ambient brightness the bike measures |
-| BEStie battery | The board's own battery %, red below 20 %: time to charge it |
+| BEStie battery | The board's own battery %, orange below 20 %: time to charge it |
+| Bike link | The state of the link: LINKED, BIKE OFF, NO BOARD, BT OFF, NO PERM. **Tap it** for what to do (search the board again, turn Bluetooth back on, grant the permission) |
 
-The bike fields show `--` while the bike is off, the board field while the board is not found.
+Colors: green while the data arrive, **orange** for a warning (the bike is just
+switched off, the board battery is low), **red** for an error (board not found,
+Bluetooth off, permission missing). Without data the fields show `--` with the
+reason or the last value below it.
 
 **A virtual sensor, "Bosch eBike".** BoschData also offers the bike to the
 Karoo as a sensor: your rider power (on by default), and optionally cadence and
@@ -112,7 +116,12 @@ working because they use a separate radio.
 
 **Fix:** pair any Bluetooth LE sensor in the Karoo's **Sensors** menu (a heart
 rate strap, for example) and keep it in the ride profile. Bluetooth then stays
-on during the ride. Found with a user in
+on during the ride.
+
+When it happens, BoschData tells you: the Bike link field shows **BT OFF by
+Karoo**, a "Bluetooth off" alert appears once per ride, and a tap on the field
+offers TURN BLUETOOTH ON. Whether the Karoo then leaves it on is up to the
+Karoo: the lasting fix is the paired sensor. Found with a user in
 [issue #1](https://github.com/anpaiss/BoschData/issues/1), 22 November 2026.
 
 To check it with adb, during a recording:

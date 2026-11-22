@@ -182,6 +182,14 @@ class BestieLink(
         if (started) startScan()
     }
 
+    /** SEARCH AGAIN in the BIKE LINK popup: the fast search of the start, keeping the saved board. */
+    fun searchAgain() {
+        logger.log(TAG, "SEARCH AGAIN dal campo BIKE LINK (${if (linked) "scheda già collegata" else if (gatt != null) "connessione in corso" else "in ricerca"})")
+        if (!started || linked) return
+        fastUntilMs = System.currentTimeMillis() + FAST_SCAN_MS
+        if (gatt == null) startScan()
+    }
+
     /** One line for the app screen. */
     fun status(): String = when {
         !started -> "link off"
@@ -274,6 +282,7 @@ class BestieLink(
             linked = false
             logger.log(TAG, "Link con la scheda chiuso ($why) dopo ${(System.currentTimeMillis() - linkedSinceMs) / 60_000} min, $liveMsgs LIVE in tutto")
             listener.onBoard(null)
+            listener.onBoardLink(false)
         }
         setBikeUp(false, "scheda scollegata")
     }
@@ -368,6 +377,7 @@ class BestieLink(
                     lastHeartbeatMs = linkedSinceMs
                     heartbeatLiveMsgs = 0L
                     logger.log(TAG, "Scheda collegata: ${board?.summary() ?: "status non ancora letto"}")
+                    listener.onBoardLink(true)
                 }
                 opDone()
             }
